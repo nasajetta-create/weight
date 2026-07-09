@@ -126,8 +126,12 @@
         </div>
       </div>
       <div class="card">
-        <h3>達標儀表板</h3><div class="desc" id="dashDesc">47 歲男性標準；綠帶＝健康範圍、圓點＝你目前值</div>
-        <div id="dashBody"></div>
+        <h3>衛福部健康指標</h3><div class="desc" id="dashDesc">依國民健康署成人標準；綠帶＝健康範圍、圓點＝你目前值</div>
+        <div id="dashOfficial"></div>
+      </div>
+      <div class="card">
+        <h3>體重計附加參考（Omron HBF-214）</h3><div class="desc">非衛福部指標；由體脂計生物電阻推估、依 Omron 官方判定，僅供參考</div>
+        <div id="dashScale"></div>
       </div>
       <div class="card">
         <h3>月平均體重</h3>
@@ -145,7 +149,7 @@
         <div class="stat"><div class="s-lab">內臟脂肪</div><div class="s-val" id="hVis">--</div><div class="badge" id="hVisB"></div></div>
         <div class="stat"><div class="s-lab">BMI</div><div class="s-val" id="hBmi">--</div><div class="badge" id="hBmiB"></div></div>
       </div>
-      <div class="card"><h3>內臟脂肪 + 體年齡</h3><div class="desc">健康風險指標；內臟脂肪標準區間 &lt;12（綠帶）</div><div class="chart-wrap"><canvas id="cHealth"></canvas></div></div>
+      <div class="card"><h3>內臟脂肪 + 體年齡</h3><div class="desc">健康風險指標；內臟脂肪 Omron 標準 1–9（綠帶）</div><div class="chart-wrap"><canvas id="cHealth"></canvas></div></div>
     </section>
     <section class="view" id="v-rec">
       <div class="section-title"><span>事件標記</span><button class="link-btn" id="addEvent">＋ 事件</button></div>
@@ -286,7 +290,7 @@ function drawRest(){
     {label:'骨格筋率 %',data:DATA.map(x=>x.muscle),borderColor:'#20c4a8',borderWidth:2,pointRadius:0,tension:.4,yAxisID:'y1'}]},options:{responsive:true,maintainAspectRatio:false,interaction:{mode:'index',intersect:false},plugins:{legend:{labels:{boxWidth:14,boxHeight:3,padding:12}},tooltip:{callbacks:{title:it=>it[0].label}}},scales:{x:catX(),y:{position:'left',grid:{color:'#f0f2f8'},ticks:{color:'#f2506e'}},y1:{position:'right',grid:{display:false},ticks:{color:'#20c4a8'}}}}});
   charts.bmr=new Chart(document.getElementById('cBmr'),{type:'line',data:{labels:L,datasets:[
     {label:'基礎代謝 kcal',data:DATA.map(x=>x.bmr),borderColor:'#7a5cf0',backgroundColor:'rgba(122,92,240,.12)',borderWidth:2,pointRadius:0,tension:.4,fill:true}]},options:baseOpt('')});
-  const bandPlugin={id:'band',beforeDraw(c){const{ctx,chartArea:a,scales}=c;if(!a)return;const y12=scales.y.getPixelForValue(12);ctx.save();ctx.fillStyle='rgba(32,196,168,.10)';ctx.fillRect(a.left,y12,a.right-a.left,a.bottom-y12);ctx.restore();}};
+  const bandPlugin={id:'band',beforeDraw(c){const{ctx,chartArea:a,scales}=c;if(!a)return;const y9=scales.y.getPixelForValue(9);ctx.save();ctx.fillStyle='rgba(32,196,168,.10)';ctx.fillRect(a.left,y9,a.right-a.left,a.bottom-y9);ctx.restore();}};
   charts.health=new Chart(document.getElementById('cHealth'),{type:'line',data:{labels:L,datasets:[
     {label:'內臟脂肪',data:DATA.map(x=>x.visceral),borderColor:'#f7883b',borderWidth:2,pointRadius:0,tension:.4,yAxisID:'y'},
     {label:'體年齡',data:DATA.map(x=>x.bodyAge),borderColor:'#4f6ef7',borderWidth:2,pointRadius:0,tension:.4,yAxisID:'y1'}]},options:{responsive:true,maintainAspectRatio:false,interaction:{mode:'index',intersect:false},plugins:{legend:{labels:{boxWidth:14,boxHeight:3,padding:12}},tooltip:{callbacks:{title:it=>it[0].label}}},scales:{x:catX(),y:{position:'left',grid:{color:'#f0f2f8'},title:{display:true,text:'內臟脂肪'}},y1:{position:'right',grid:{display:false},title:{display:true,text:'體年齡'}}}},plugins:[bandPlugin]});
@@ -296,19 +300,21 @@ function drawRest(){
 function dashSpec(){
   const age=ageNow();
   return [
-    {key:'weight',label:'體重',unit:'kg',lo:55,hi:72,tLo:50,tHi:95,ok:v=>v>=55&&v<=72,goal:'55–72'},
+    {key:'weight',label:'體重',unit:'kg',lo:55,hi:72,tLo:50,tHi:95,ok:v=>v>=55&&v<=72,goal:'55–72kg'},
     {key:'bmi',label:'BMI',unit:'',lo:18.5,hi:24,tLo:16,tHi:34,ok:v=>v>=18.5&&v<=24,goal:'18.5–24'},
-    {key:'fat',label:'體脂率',unit:'%',lo:11,hi:22,tLo:5,tHi:40,ok:v=>v>=11&&v<=22,goal:'11–22'},
-    {key:'visceral',label:'內臟脂肪',unit:'',lo:1,hi:12,tLo:0,tHi:30,ok:v=>v<=12,goal:'≤12'},
-    {key:'muscle',label:'骨格筋率',unit:'%',lo:33,hi:45,tLo:25,tHi:45,ok:v=>v>=33,goal:'≥33'},
-    {key:'bodyAge',label:'體年齡',unit:'歲',lo:30,hi:age,tLo:30,tHi:70,ok:v=>v<=age,goal:'≤'+age}
+    {key:'fat',label:'體脂率',unit:'%',lo:14,hi:25,tLo:5,tHi:40,ok:v=>v<=25,goal:'≤25%'},
+    {key:'visceral',label:'內臟脂肪',unit:'',lo:1,hi:9,tLo:0,tHi:30,ok:v=>v<=9,goal:'≤9（Omron標準）'},
+    {key:'muscle',label:'骨骼肌率',unit:'%',lo:33,hi:40,tLo:25,tHi:45,ok:v=>v>=33,goal:'≥33（Omron男標準）'},
+    {key:'bodyAge',label:'身體年齡',unit:'歲',lo:30,hi:age,tLo:30,tHi:70,ok:v=>v<=age,goal:'≤'+age+'（實齡）'}
   ];
 }
 function renderDash(){
   if(!DATA.length) return;
   const last=DATA[DATA.length-1];
-  document.getElementById('dashDesc').textContent=ageNow()+' 歲男性標準；綠帶＝健康範圍、圓點＝你目前值';
-  const box=document.getElementById('dashBody'); box.innerHTML='';
+  const dd=document.getElementById('dashDesc'); if(dd) dd.textContent='依國民健康署成人標準（BMI 18.5–24、體脂率≤25%）；綠帶＝健康範圍、圓點＝你目前值';
+  const OFFICIAL=['weight','bmi','fat'];
+  const bo=document.getElementById('dashOfficial'); if(bo) bo.innerHTML='';
+  const bs=document.getElementById('dashScale'); if(bs) bs.innerHTML='';
   dashSpec().forEach(s=>{
     const v=last[s.key]; if(v==null) return;
     const pos=Math.max(0,Math.min(100,(v-s.tLo)/(s.tHi-s.tLo)*100));
@@ -321,7 +327,7 @@ function renderDash(){
       <div class="track"><div class="band" style="left:${bL}%;width:${bW}%"></div><div class="mark" style="left:${pos}%;background:${col}"></div></div>
       <div class="dash-val">${(+v).toFixed(s.key==='visceral'||s.key==='bodyAge'?0:1)}<span style="font-size:9px;color:#8a93a6"> ${s.unit}</span></div>
       <div class="dash-tag ${ok?'t-ok':'t-no'}">${ok?'達標':'未達'}</div>`;
-    box.appendChild(row);
+    (OFFICIAL.indexOf(s.key)>=0?bo:bs).appendChild(row);
   });
 }
 
@@ -346,7 +352,7 @@ function renderHeader(){
   const gp=document.getElementById('goalProg'); if(gp){const cur=last.weight; gp.textContent = cur>STAGE_GOAL ? ('目前 '+cur.toFixed(1)+'kg，距階段目標 '+STAGE_GOAL+'kg 還差 '+(cur-STAGE_GOAL).toFixed(1)+'kg') : ('已達階段目標！下一步健康線 '+TARGET_WEIGHT+'kg');}
   const vis=document.getElementById('hVis');vis.textContent=last.visceral??'--';
   const visB=document.getElementById('hVisB');
-  if(last.visceral!=null){if(last.visceral<=12){visB.className='badge b-good';visB.textContent='標準範圍';}else if(last.visceral<=19){visB.className='badge b-warn';visB.textContent='偏高';}else{visB.className='badge b-bad';visB.textContent='過高';}}else visB.textContent='';
+  if(last.visceral!=null){if(last.visceral<=9){visB.className='badge b-good';visB.textContent='標準(1-9)';}else if(last.visceral<=14){visB.className='badge b-warn';visB.textContent='偏高(10-14)';}else{visB.className='badge b-bad';visB.textContent='過高(15+)';}}else visB.textContent='';
   document.getElementById('hBmi').textContent=last.bmi??'--';
   const hbB=document.getElementById('hBmiB');
   if(last.bmi!=null){if(last.bmi<24){hbB.className='badge b-good';hbB.textContent='標準';}else if(last.bmi<27){hbB.className='badge b-warn';hbB.textContent='過重';}else{hbB.className='badge b-bad';hbB.textContent='肥胖';}}else hbB.textContent='';
