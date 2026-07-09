@@ -1,0 +1,381 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#4f6ef7">
+<title>體重紀錄</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/chartjs-adapter-date-fns/3.0.0/chartjs-adapter-date-fns.bundle.min.js"></script>
+<style>
+  :root{--bg:#eef1f6;--card:#ffffff;--ink:#1c2333;--sub:#8a93a6;--accent:#4f6ef7;--accent2:#20c4a8;--warn:#f7883b;--danger:#f2506e;--line:#eceff5;--shadow:0 6px 22px rgba(30,40,80,.08);}
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+  html,body{margin:0;padding:0;font-family:-apple-system,"PingFang TC","Noto Sans TC","Microsoft JhengHei",sans-serif;background:#d9dee8;color:var(--ink);}
+  #phone{max-width:440px;margin:0 auto;min-height:100vh;background:var(--bg);position:relative;box-shadow:0 0 40px rgba(0,0,0,.12);display:flex;flex-direction:column;overflow:hidden;}
+  @media(min-width:480px){#phone{margin:16px auto;min-height:calc(100vh - 32px);border-radius:34px;}}
+  header{background:linear-gradient(135deg,#5a76f9,#4f6ef7 55%,#6a5cf0);color:#fff;padding:22px 20px 26px;border-radius:0 0 26px 26px;}
+  @media(min-width:480px){header{border-radius:34px 34px 26px 26px;}}
+  .h-top{display:flex;justify-content:space-between;align-items:center;font-size:13px;opacity:.95;}
+  .sync{display:inline-flex;align-items:center;gap:5px;font-size:11.5px;font-weight:600;background:rgba(255,255,255,.18);padding:3px 10px;border-radius:20px;}
+  .dot{width:7px;height:7px;border-radius:50%;background:#8de0c6;}
+  .dot.off{background:#ffd27a;} .dot.err{background:#ff9aa8;}
+  .h-main{display:flex;align-items:flex-end;gap:10px;margin-top:8px;}
+  .h-main .val{font-size:52px;font-weight:800;line-height:1;letter-spacing:-1px;}
+  .h-main .unit{font-size:16px;font-weight:600;opacity:.85;margin-bottom:6px;}
+  .h-date{font-size:12px;opacity:.85;margin-top:6px;}
+  .chip{display:inline-flex;align-items:center;gap:3px;background:rgba(255,255,255,.2);padding:4px 10px;border-radius:20px;font-size:13px;font-weight:700;margin-top:8px;}
+  .mini{display:flex;gap:8px;margin-top:16px;}
+  .mini .m{flex:1;background:rgba(255,255,255,.16);border-radius:14px;padding:9px 8px;text-align:center;}
+  .mini .m .mv{font-size:17px;font-weight:800;}
+  .mini .m .ml{font-size:10.5px;opacity:.85;margin-top:2px;}
+  main{flex:1;padding:16px 14px 92px;overflow-y:auto;-webkit-overflow-scrolling:touch;}
+  .view{display:none;} .view.active{display:block;animation:fade .25s ease;}
+  @keyframes fade{from{opacity:0;transform:translateY(6px);}to{opacity:1;transform:none;}}
+  .card{background:var(--card);border-radius:20px;padding:16px;box-shadow:var(--shadow);margin-bottom:14px;}
+  .card h3{margin:0 0 2px;font-size:15px;font-weight:700;}
+  .card .desc{color:var(--sub);font-size:11.5px;margin-bottom:10px;}
+  .chart-wrap{position:relative;height:230px;}
+  .seg{display:flex;background:#e9edf5;border-radius:12px;padding:3px;margin-bottom:12px;}
+  .seg button{flex:1;border:0;background:transparent;padding:7px 0;font-size:12.5px;font-weight:600;color:var(--sub);border-radius:9px;transition:.2s;font-family:inherit;}
+  .seg button.on{background:#fff;color:var(--accent);box-shadow:0 2px 6px rgba(0,0,0,.08);}
+  .stat-row{display:flex;gap:10px;margin-bottom:14px;}
+  .stat{flex:1;background:var(--card);border-radius:18px;padding:14px;box-shadow:var(--shadow);}
+  .stat .s-lab{font-size:11.5px;color:var(--sub);}
+  .stat .s-val{font-size:26px;font-weight:800;margin-top:4px;line-height:1;}
+  .stat .s-val small{font-size:12px;font-weight:600;color:var(--sub);}
+  .badge{font-size:10.5px;font-weight:700;padding:3px 9px;border-radius:20px;display:inline-block;margin-top:8px;}
+  .b-good{background:#e3f7f1;color:#12a888;} .b-warn{background:#fdf0e2;color:#e07a25;} .b-bad{background:#fde4ea;color:#e0355a;}
+  .rec-head,.rec-row{display:grid;grid-template-columns:1.4fr 1fr .8fr .8fr 28px;gap:4px;padding:11px 8px;font-size:12.5px;align-items:center;}
+  .rec-head{color:var(--sub);font-size:11px;font-weight:700;border-bottom:1px solid var(--line);position:sticky;top:0;background:#fff;z-index:1;}
+  .rec-row{border-bottom:1px solid var(--line);} .rec-row:last-child{border-bottom:0;}
+  .rec-row .d{color:var(--sub);font-size:11.5px;} .rec-row .w{font-weight:800;}
+  .up{color:var(--danger);} .down{color:var(--accent2);}
+  .rec-scroll{max-height:58vh;overflow-y:auto;}
+  .del{border:0;background:transparent;color:#cfd6e4;font-size:16px;cursor:pointer;padding:0;line-height:1;} .del:active{color:var(--danger);}
+  nav{position:fixed;left:0;right:0;bottom:0;max-width:440px;margin:0 auto;background:rgba(255,255,255,.94);backdrop-filter:blur(12px);border-top:1px solid #e5e9f1;display:flex;padding:8px 6px calc(8px + env(safe-area-inset-bottom));z-index:20;}
+  @media(min-width:480px){nav{border-radius:0 0 34px 34px;}}
+  nav button{flex:1;border:0;background:transparent;padding:6px 0;color:var(--sub);font-size:10.5px;font-weight:600;display:flex;flex-direction:column;align-items:center;gap:3px;font-family:inherit;transition:.2s;}
+  nav button svg{width:23px;height:23px;stroke:currentColor;stroke-width:2;fill:none;stroke-linecap:round;stroke-linejoin:round;}
+  nav button.on{color:var(--accent);}
+  .section-title{font-size:13px;font-weight:700;color:var(--sub);margin:4px 4px 10px;display:flex;justify-content:space-between;align-items:center;gap:8px;}
+  .link-btn{border:0;background:#eef1fb;color:var(--accent);font-weight:700;font-size:11.5px;padding:6px 11px;border-radius:20px;font-family:inherit;}
+  .fab{position:fixed;right:calc(50% - 220px + 16px);bottom:78px;width:56px;height:56px;border-radius:50%;background:linear-gradient(135deg,#5a76f9,#6a5cf0);color:#fff;border:0;font-size:30px;line-height:1;box-shadow:0 8px 20px rgba(79,110,247,.45);z-index:25;display:flex;align-items:center;justify-content:center;}
+  @media(max-width:479px){.fab{right:20px;}}
+  .overlay{position:fixed;inset:0;background:rgba(20,26,44,.45);z-index:40;display:none;align-items:flex-end;justify-content:center;}
+  .overlay.show{display:flex;}
+  .sheet{background:#fff;width:100%;max-width:440px;border-radius:24px 24px 0 0;padding:20px 20px calc(24px + env(safe-area-inset-bottom));animation:up .25s ease;}
+  @keyframes up{from{transform:translateY(100%);}to{transform:none;}}
+  .sheet h3{margin:0 0 4px;font-size:17px;} .sheet p.hint{margin:0 0 14px;font-size:12px;color:var(--sub);}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+  .fld{margin-bottom:10px;} .fld label{font-size:11.5px;color:var(--sub);font-weight:600;display:block;margin-bottom:4px;}
+  .fld input{width:100%;border:1.5px solid #e5e9f1;border-radius:12px;padding:11px 12px;font-size:15px;font-family:inherit;background:#fafbfd;}
+  .fld input:focus{outline:none;border-color:var(--accent);background:#fff;}
+  .req label::after{content:" *";color:var(--danger);}
+  .sheet-actions{display:flex;gap:10px;margin-top:8px;}
+  .btn{flex:1;border:0;border-radius:14px;padding:14px;font-size:15px;font-weight:700;font-family:inherit;}
+  .btn-primary{background:var(--accent);color:#fff;} .btn-ghost{background:#eef1f6;color:var(--sub);}
+  .export-row{display:flex;gap:8px;} .export-row .link-btn{background:#f2f4fa;}
+  /* login */
+  #login{position:fixed;inset:0;z-index:60;background:linear-gradient(160deg,#5a76f9,#6a5cf0);color:#fff;display:none;flex-direction:column;align-items:center;justify-content:center;padding:30px;text-align:center;}
+  #login.show{display:flex;}
+  #login .logo{width:74px;height:74px;border-radius:22px;background:rgba(255,255,255,.16);display:flex;align-items:center;justify-content:center;font-size:38px;margin-bottom:18px;}
+  #login h1{font-size:24px;margin:0 0 6px;} #login p{opacity:.9;font-size:13.5px;margin:0 0 28px;max-width:280px;line-height:1.6;}
+  .gbtn{background:#fff;color:#3c4257;border:0;border-radius:14px;padding:14px 22px;font-size:15px;font-weight:700;font-family:inherit;display:flex;align-items:center;gap:10px;box-shadow:0 8px 24px rgba(0,0,0,.18);}
+  .gbtn svg{width:20px;height:20px;}
+  #loginMsg{margin-top:18px;font-size:12.5px;opacity:.95;min-height:18px;}
+</style>
+</head>
+<body>
+<div id="phone">
+  <header>
+    <div class="h-top"><span>體重紀錄</span><span class="sync" id="syncChip"><span class="dot off" id="syncDot"></span><span id="syncTxt">連線中…</span></span></div>
+    <div class="h-main"><span class="val" id="curW">--</span><span class="unit">kg</span><span class="chip" id="curDelta"></span></div>
+    <div class="h-date" id="curDate"></div>
+    <div class="mini">
+      <div class="m"><div class="mv" id="mFat">--</div><div class="ml">體脂率 %</div></div>
+      <div class="m"><div class="mv" id="mMus">--</div><div class="ml">骨格筋 %</div></div>
+      <div class="m"><div class="mv" id="mBmi">--</div><div class="ml">BMI</div></div>
+      <div class="m"><div class="mv" id="mAge">--</div><div class="ml">體年齡</div></div>
+    </div>
+  </header>
+  <main>
+    <section class="view active" id="v-trend">
+      <div class="stat-row">
+        <div class="stat"><div class="s-lab">起始體重</div><div class="s-val" id="startW">--<small> kg</small></div><div class="badge b-good" id="totalDrop"></div></div>
+        <div class="stat"><div class="s-lab">最低紀錄</div><div class="s-val" id="minW">--<small> kg</small></div><div class="badge b-good" id="minWDate"></div></div>
+      </div>
+      <div class="card">
+        <h3>體重趨勢</h3><div class="desc">實測值＋近 5 次移動平均線（抹平量測波動）</div>
+        <div class="seg" id="rangeSeg"><button data-r="365">近 1 年</button><button data-r="1095">近 3 年</button><button data-r="0" class="on">全部</button></div>
+        <div class="chart-wrap"><canvas id="cWeight"></canvas></div>
+      </div>
+    </section>
+    <section class="view" id="v-body">
+      <div class="card"><h3>體脂率 vs 骨格筋率</h3><div class="desc">體脂下降、肌肉率上升＝體態變精實</div><div class="chart-wrap"><canvas id="cBody"></canvas></div></div>
+      <div class="card"><h3>基礎代謝 (BMR)</h3><div class="desc">越高越好，反映肌肉量與代謝</div><div class="chart-wrap"><canvas id="cBmr"></canvas></div></div>
+    </section>
+    <section class="view" id="v-health">
+      <div class="stat-row">
+        <div class="stat"><div class="s-lab">內臟脂肪</div><div class="s-val" id="hVis">--</div><div class="badge" id="hVisB"></div></div>
+        <div class="stat"><div class="s-lab">BMI</div><div class="s-val" id="hBmi">--</div><div class="badge" id="hBmiB"></div></div>
+      </div>
+      <div class="card"><h3>內臟脂肪 + 體年齡</h3><div class="desc">健康風險指標；內臟脂肪標準區間 &lt;6（綠帶）</div><div class="chart-wrap"><canvas id="cHealth"></canvas></div></div>
+    </section>
+    <section class="view" id="v-rec">
+      <div class="section-title"><span>全部紀錄（最新在上）</span>
+        <div class="export-row"><button class="link-btn" id="expCsv">CSV</button><button class="link-btn" id="expJson">JSON</button><button class="link-btn" id="logoutBtn" style="background:#fdeef1;color:#e0355a;">登出</button></div>
+      </div>
+      <div class="card" style="padding:6px 10px;">
+        <div class="rec-head"><span>日期</span><span>體重</span><span>體脂%</span><span>BMI</span><span></span></div>
+        <div class="rec-scroll" id="recBody"></div>
+      </div>
+    </section>
+  </main>
+  <button class="fab" id="fab">+</button>
+  <nav id="nav">
+    <button class="on" data-v="trend"><svg viewBox="0 0 24 24"><polyline points="3 17 9 11 13 15 21 6"/></svg>趨勢</button>
+    <button data-v="body"><svg viewBox="0 0 24 24"><circle cx="12" cy="6" r="3"/><path d="M6 21v-3a6 6 0 0 1 12 0v3"/></svg>體組成</button>
+    <button data-v="health"><svg viewBox="0 0 24 24"><path d="M20 8.5c0 5-8 11-8 11s-8-6-8-11a4 4 0 0 1 8-1 4 4 0 0 1 8 1z"/></svg>健康</button>
+    <button data-v="rec"><svg viewBox="0 0 24 24"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>紀錄</button>
+  </nav>
+</div>
+
+<div class="overlay" id="overlay">
+  <div class="sheet">
+    <h3>新增紀錄</h3>
+    <p class="hint">只有體重必填，其他量得到再填。儲存後自動同步到雲端，其他裝置即時更新。</p>
+    <div class="fld req"><label>日期</label><input type="date" id="fDate"></div>
+    <div class="grid2">
+      <div class="fld req"><label>體重 (kg)</label><input type="number" step="0.1" inputmode="decimal" id="fWeight" placeholder="84.4"></div>
+      <div class="fld"><label>體脂率 %</label><input type="number" step="0.1" inputmode="decimal" id="fFat" placeholder="27.7"></div>
+      <div class="fld"><label>內臟脂肪</label><input type="number" step="1" inputmode="numeric" id="fVis" placeholder="14"></div>
+      <div class="fld"><label>骨格筋率 %</label><input type="number" step="0.1" inputmode="decimal" id="fMus" placeholder="31.2"></div>
+      <div class="fld"><label>體年齡</label><input type="number" step="1" inputmode="numeric" id="fAge" placeholder="51"></div>
+      <div class="fld"><label>基礎代謝</label><input type="number" step="1" inputmode="numeric" id="fBmr" placeholder="1815"></div>
+      <div class="fld"><label>BMI</label><input type="number" step="0.1" inputmode="decimal" id="fBmi" placeholder="28.2"></div>
+    </div>
+    <div class="sheet-actions"><button class="btn btn-ghost" id="cancelBtn">取消</button><button class="btn btn-primary" id="saveBtn">儲存</button></div>
+  </div>
+</div>
+
+<div id="login">
+  <div class="logo">⚖️</div>
+  <h1>體重紀錄</h1>
+  <p>請用你的 Google 帳號登入，資料會跨手機／電腦同步。</p>
+  <button class="gbtn" id="googleBtn">
+    <svg viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.27-4.74 3.27-8.1z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84A11 11 0 0 0 12 23z"/><path fill="#FBBC05" d="M5.84 14.1a6.6 6.6 0 0 1 0-4.2V7.06H2.18a11 11 0 0 0 0 9.88z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06L5.84 9.9C6.71 7.31 9.14 5.38 12 5.38z"/></svg>
+    使用 Google 登入
+  </button>
+  <div id="loginMsg"></div>
+</div>
+
+<!-- Firebase 同步層（module） -->
+<script type="module">
+import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
+import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager, getFirestore, doc, setDoc, onSnapshot, getDoc }
+  from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
+import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged, signOut }
+  from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js';
+const CONFIG = {
+  apiKey:"AIzaSyA4xrql0AZTPOK16SAsAp8oYi3ltb-i6U0",
+  authDomain:"g95-work.firebaseapp.com",
+  projectId:"g95-work",
+  storageBucket:"g95-work.firebasestorage.app",
+  messagingSenderId:"518379622669",
+  appId:"1:518379622669:web:1deb196d0c5d57872e6044"
+};
+const app = initializeApp(CONFIG);
+let db;
+try{ db = initializeFirestore(app,{localCache:persistentLocalCache({tabManager:persistentMultipleTabManager()})}); }
+catch(e){ db = getFirestore(app); }
+const auth = getAuth(app);
+const ref = doc(db,'weight/main');
+window._authSignIn = ()=> signInWithPopup(auth,new GoogleAuthProvider());
+window._authSignOut = ()=> signOut(auth);
+window._onAuth = (cb)=> onAuthStateChanged(auth,cb);
+window._fbSave = (records)=> setDoc(ref,{records,_ts:Date.now()},{merge:true});
+window._fbListen = (cb)=> onSnapshot(ref,(s)=> cb(s.exists()? s.data():null), (err)=> cb(undefined,err));
+window.dispatchEvent(new Event('fbready'));
+</script>
+
+<!-- 主程式（classic） -->
+<script>
+const BASE_DATA = [{"date": "2017-10-22", "weight": 88.9, "fat": 27.9, "visceral": 16, "muscle": 31.1, "bodyAge": 54, "bmr": 1886, "bmi": 30}, {"date": "2017-11-19", "weight": 87.1, "fat": 27.4, "visceral": 15, "muscle": 31.5, "bodyAge": 52, "bmr": 1862, "bmi": 29.1}, {"date": "2017-12-01", "weight": 86.3, "fat": 27.2, "visceral": 15, "muscle": 31.7, "bodyAge": 52, "bmr": 1851, "bmi": 28.8}, {"date": "2017-12-05", "weight": 85.5, "fat": 26.3, "visceral": 14, "muscle": 32.3, "bodyAge": 51, "bmr": 1846, "bmi": 28.6}, {"date": "2017-12-17", "weight": 85.7, "fat": 27.2, "visceral": 14, "muscle": 31.7, "bodyAge": 52, "bmr": 1842, "bmi": 28.6}, {"date": "2017-12-19", "weight": 85, "fat": 26.5, "visceral": 14, "muscle": 32.2, "bodyAge": 51, "bmr": 1836, "bmi": 28.4}, {"date": "2017-12-23", "weight": 84.5, "fat": 25.9, "visceral": 14, "muscle": 32.6, "bodyAge": 50, "bmr": 1833, "bmi": 28.2}, {"date": "2017-12-28", "weight": 85.1, "fat": 25.7, "visceral": 14, "muscle": 32.7, "bodyAge": 50, "bmr": 1845, "bmi": 28.4}, {"date": "2018-01-01", "weight": 84.2, "fat": 26.8, "visceral": 14, "muscle": 32, "bodyAge": 51, "bmr": 1821, "bmi": 28.1}, {"date": "2018-01-15", "weight": 83.6, "fat": 26.5, "visceral": 13, "muscle": 32.2, "bodyAge": 50, "bmr": 1813, "bmi": 27.9}, {"date": "2018-01-20", "weight": 83.2, "fat": 26.2, "visceral": 13, "muscle": 32.4, "bodyAge": 50, "bmr": 1810, "bmi": 27.8}, {"date": "2018-01-27", "weight": 82, "fat": 25.8, "visceral": 13, "muscle": 32.7, "bodyAge": 49, "bmr": 1794, "bmi": 27.4}, {"date": "2018-02-05", "weight": 81.5, "fat": 25.8, "visceral": 13, "muscle": 32.7, "bodyAge": 48, "bmr": 786, "bmi": 27.2}, {"date": "2018-03-03", "weight": 82.4, "fat": 25.1, "visceral": 13, "muscle": 33.2, "bodyAge": 48, "bmr": 1806, "bmi": 27.5}, {"date": "2018-04-09", "weight": 82.6, "fat": 24.8, "visceral": 13, "muscle": 33.4, "bodyAge": 48, "bmr": 1812, "bmi": 27.6}, {"date": "2018-04-17", "weight": 82, "fat": 24.6, "visceral": 13, "muscle": 33.6, "bodyAge": 48, "bmr": 1804, "bmi": 27.4}, {"date": "2018-04-25", "weight": 83.1, "fat": 23.7, "visceral": 13, "muscle": 34, "bodyAge": 48, "bmr": 1828, "bmi": 27.8}, {"date": "2018-04-30", "weight": 81.8, "fat": 25.3, "visceral": 13, "muscle": 33.1, "bodyAge": 48, "bmr": 1795, "bmi": 27.8}, {"date": "2018-05-06", "weight": 82.1, "fat": 23.8, "visceral": 13, "muscle": 34, "bodyAge": 47, "bmr": 1811, "bmi": 27.4}, {"date": "2018-05-22", "weight": 82, "fat": 23.9, "visceral": 13, "muscle": 34, "bodyAge": 47, "bmr": 1809, "bmi": 27.4}, {"date": "2018-07-23", "weight": 82.2, "fat": 26.4, "visceral": 13, "muscle": 32.2, "bodyAge": 49, "bmr": 1792, "bmi": 27.5}, {"date": "2018-07-29", "weight": 81.9, "fat": 26.5, "visceral": 13, "muscle": 32.1, "bodyAge": 49, "bmr": 1785, "bmi": 27.4}, {"date": "2018-08-05", "weight": 81.9, "fat": 26.2, "visceral": 13, "muscle": 32.4, "bodyAge": 49, "bmr": 1788, "bmi": 27.4}, {"date": "2018-08-07", "weight": 82.9, "fat": 26, "visceral": 13, "muscle": 32.6, "bodyAge": 49, "bmr": 1807, "bmi": 27.7}, {"date": "2018-08-11", "weight": 82.2, "fat": 24.4, "visceral": 13, "muscle": 33.6, "bodyAge": 48, "bmr": 1808, "bmi": 27.5}, {"date": "2018-08-23", "weight": 81.7, "fat": 26.4, "visceral": 13, "muscle": 32.3, "bodyAge": 49, "bmr": 1784, "bmi": 27.3}, {"date": "2018-09-02", "weight": 81.8, "fat": 26.3, "visceral": 13, "muscle": 32.3, "bodyAge": 49, "bmr": 1786, "bmi": 27.3}, {"date": "2018-09-11", "weight": 81, "fat": 26.3, "visceral": 12, "muscle": 32.3, "bodyAge": 49, "bmr": 1773, "bmi": 27.1}, {"date": "2018-09-30", "weight": 81.4, "fat": 25.9, "visceral": 12, "muscle": 32.6, "bodyAge": 48, "bmr": 1783, "bmi": 27.2}, {"date": "2018-10-01", "weight": 81.7, "fat": 26.8, "visceral": 13, "muscle": 31.9, "bodyAge": 49, "bmr": 1780, "bmi": 27.3}, {"date": "2018-10-10", "weight": 80.2, "fat": 26.4, "visceral": 12, "muscle": 32.1, "bodyAge": 48, "bmr": 1759, "bmi": 26.8}, {"date": "2018-11-04", "weight": 81.9, "fat": 26.2, "visceral": 13, "muscle": 32.4, "bodyAge": 49, "bmr": 1789, "bmi": 27.4}, {"date": "2018-11-15", "weight": 79.6, "fat": 25.9, "visceral": 12, "muscle": 32.6, "bodyAge": 47, "bmr": 1754, "bmi": 26.6}, {"date": "2018-12-01", "weight": 80.2, "fat": 25.1, "visceral": 12, "muscle": 33.2, "bodyAge": 47, "bmr": 1771, "bmi": 26.8}, {"date": "2018-12-06", "weight": 80, "fat": 25.3, "visceral": 12, "muscle": 33.1, "bodyAge": 47, "bmr": 1765, "bmi": 26.7}, {"date": "2018-12-12", "weight": 80.2, "fat": 26.1, "visceral": 12, "muscle": 32.4, "bodyAge": 48, "bmr": 1762, "bmi": 26.7}, {"date": "2018-12-26", "weight": 80.2, "fat": 25, "visceral": 12, "muscle": 33.3, "bodyAge": 47, "bmr": 1771, "bmi": 26.8}, {"date": "2019-01-22", "weight": 80.5, "fat": 26, "visceral": 12, "muscle": 326, "bodyAge": 48, "bmr": 1768, "bmi": 26.9}, {"date": "2019-02-03", "weight": 80.9, "fat": 25.2, "visceral": 12, "muscle": 33.1, "bodyAge": 48, "bmr": 1781, "bmi": 27}, {"date": "2019-02-11", "weight": 81.4, "fat": 25.2, "visceral": 12, "muscle": 33.2, "bodyAge": 48, "bmr": 1789, "bmi": 27.2}, {"date": "2019-02-27", "weight": 80.2, "fat": 26, "visceral": 12, "muscle": 32.5, "bodyAge": 48, "bmr": 1763, "bmi": 26.8}, {"date": "2019-03-18", "weight": 80.8, "fat": 25.8, "visceral": 12, "muscle": 32.7, "bodyAge": 48, "bmr": 1774, "bmi": 27}, {"date": "2019-04-06", "weight": 80.5, "fat": 25.3, "visceral": 12, "muscle": 33.1, "bodyAge": 47, "bmr": 1774, "bmi": 26.9}, {"date": "2019-04-17", "weight": 80.9, "fat": 25.5, "visceral": 12, "muscle": 32.9, "bodyAge": 48, "bmr": 1779, "bmi": 27}, {"date": "2019-04-22", "weight": 80.5, "fat": 25.9, "visceral": 12, "muscle": 32.6, "bodyAge": 48, "bmr": 1768, "bmi": 26.9}, {"date": "2019-05-06", "weight": 80.1, "fat": 25.5, "visceral": 12, "muscle": 32.9, "bodyAge": 47, "bmr": 1765, "bmi": 26.8}, {"date": "2019-05-14", "weight": 80.5, "fat": 25.7, "visceral": 12, "muscle": 32.8, "bodyAge": 48, "bmr": 1770, "bmi": 26.9}, {"date": "2019-05-27", "weight": 82, "fat": 26.7, "visceral": 13, "muscle": 32, "bodyAge": 49, "bmr": 1786, "bmi": 27.4}, {"date": "2019-06-04", "weight": 80.5, "fat": 26.4, "visceral": 12, "muscle": 32.1, "bodyAge": 48, "bmr": 1764, "bmi": 26.9}, {"date": "2019-06-17", "weight": 81.7, "fat": 26.2, "visceral": 13, "muscle": 32.4, "bodyAge": 49, "bmr": 1786, "bmi": 27.3}, {"date": "2019-07-14", "weight": 79.7, "fat": 26.1, "visceral": 12, "muscle": 32.4, "bodyAge": 48, "bmr": 1754, "bmi": 26.6}, {"date": "2019-07-28", "weight": 80.8, "fat": 24.1, "visceral": 12, "muscle": 33.9, "bodyAge": 47, "bmr": 1788, "bmi": 27}, {"date": "2019-08-18", "weight": 81.4, "fat": 25.9, "visceral": 12, "muscle": 32.6, "bodyAge": 48, "bmr": 1783, "bmi": 27.2}, {"date": "2019-08-29", "weight": 81.3, "fat": 25.9, "visceral": 12, "muscle": 32.6, "bodyAge": 48, "bmr": 1781, "bmi": 27.2}, {"date": "2019-09-10", "weight": 80.6, "fat": 26.3, "visceral": 12, "muscle": 32.3, "bodyAge": 48, "bmr": 1766, "bmi": 26.9}, {"date": "2019-10-11", "weight": 81.9, "fat": 25.9, "visceral": 13, "muscle": 32.6, "bodyAge": 49, "bmr": 1791, "bmi": 27.4}, {"date": "2019-11-16", "weight": 82.5, "fat": 26.8, "visceral": 13, "muscle": 31.9, "bodyAge": 50, "bmr": 1793, "bmi": 27.6}, {"date": "2019-11-27", "weight": 82.6, "fat": 26.9, "visceral": 13, "muscle": 31.8, "bodyAge": 50, "bmr": 1794, "bmi": 27.6}, {"date": "2019-12-16", "weight": 83.4, "fat": 25.9, "visceral": 13, "muscle": 32.6, "bodyAge": 49, "bmr": 1815, "bmi": 27.9}, {"date": "2019-12-25", "weight": 82.4, "fat": 26.7, "visceral": 13, "muscle": 32, "bodyAge": 50, "bmr": 1792, "bmi": 27.5}, {"date": "2020-01-25", "weight": 83.6, "fat": 25.7, "visceral": 13, "muscle": 32.8, "bodyAge": 49, "bmr": 1821, "bmi": 27.9}, {"date": "2020-02-06", "weight": 82.6, "fat": 26.1, "visceral": 13, "muscle": 32.5, "bodyAge": 49, "bmr": 1801, "bmi": 27.6}, {"date": "2020-04-18", "weight": 82.1, "fat": 26, "visceral": 13, "muscle": 32.6, "bodyAge": 49, "bmr": 1794, "bmi": 27.4}, {"date": "2020-05-16", "weight": 82.3, "fat": 25.8, "visceral": 13, "muscle": 32.8, "bodyAge": 49, "bmr": 1799, "bmi": 27.5}, {"date": "2020-05-30", "weight": 82.3, "fat": 25.9, "visceral": 13, "muscle": 32.7, "bodyAge": 49, "bmr": 1798, "bmi": 27.5}, {"date": "2020-07-25", "weight": 83.9, "fat": 26.2, "visceral": 14, "muscle": 32.4, "bodyAge": 50, "bmr": 1821, "bmi": 28}, {"date": "2020-08-07", "weight": 82.9, "fat": 25.6, "visceral": 13, "muscle": 32.9, "bodyAge": 49, "bmr": 1811, "bmi": 27.7}, {"date": "2020-08-22", "weight": 81.7, "fat": 26, "visceral": 13, "muscle": 32.6, "bodyAge": 49, "bmr": 1788, "bmi": 27.3}, {"date": "2020-09-14", "weight": 83.9, "fat": 26.5, "visceral": 14, "muscle": 32.2, "bodyAge": 50, "bmr": 1818, "bmi": 28}, {"date": "2020-09-18", "weight": 82.2, "fat": 25, "visceral": 13, "muscle": 33.3, "bodyAge": 48, "bmr": 1804, "bmi": 27.5}, {"date": "2020-09-29", "weight": 81.8, "fat": 26.8, "visceral": 13, "muscle": 31.9, "bodyAge": 49, "bmr": 1782, "bmi": 27.3}, {"date": "2020-10-11", "weight": 82, "fat": 26.4, "visceral": 13, "muscle": 32.3, "bodyAge": 49, "bmr": 1789, "bmi": 27.4}, {"date": "2020-10-26", "weight": 81.8, "fat": 26.6, "visceral": 13, "muscle": 32, "bodyAge": 49, "bmr": 1783, "bmi": 27.3}, {"date": "2020-11-22", "weight": 81.6, "fat": 25, "visceral": 13, "muscle": 33.3, "bodyAge": 48, "bmr": 1794, "bmi": 27.3}, {"date": "2020-12-12", "weight": 81.2, "fat": 26.7, "visceral": 12, "muscle": 31.9, "bodyAge": 49, "bmr": 1772, "bmi": 27.1}, {"date": "2020-12-30", "weight": 81, "fat": 26.3, "visceral": 12, "muscle": 32.3, "bodyAge": 49, "bmr": 1773, "bmi": 27.1}, {"date": "2021-01-30", "weight": 81.1, "fat": 26, "visceral": 12, "muscle": 32.5, "bodyAge": 48, "bmr": 1778, "bmi": 27.1}, {"date": "2021-02-10", "weight": 82.6, "fat": 25.5, "visceral": 13, "muscle": 33, "bodyAge": 49, "bmr": 1806, "bmi": 27.6}, {"date": "2021-03-01", "weight": 83.1, "fat": 26.3, "visceral": 13, "muscle": 32.4, "bodyAge": 50, "bmr": 1808, "bmi": 27.8}, {"date": "2021-03-17", "weight": 82.7, "fat": 26.3, "visceral": 13, "muscle": 32.4, "bodyAge": 49, "bmr": 1801, "bmi": 27.6}, {"date": "2021-04-07", "weight": 84.9, "fat": 27.5, "visceral": 14, "muscle": 31.4, "bodyAge": 51, "bmr": 1826, "bmi": 28.4}, {"date": "2021-04-12", "weight": 83.5, "fat": 27, "visceral": 13, "muscle": 31.8, "bodyAge": 50, "bmr": 1808, "bmi": 27.9}, {"date": "2021-04-19", "weight": 84.2, "fat": 27.1, "visceral": 14, "muscle": 31.7, "bodyAge": 51, "bmr": 1818, "bmi": 28.1}, {"date": "2021-05-03", "weight": 83.8, "fat": 27.1, "visceral": 14, "muscle": 31.7, "bodyAge": 50, "bmr": 1811, "bmi": 28}, {"date": "2021-05-14", "weight": 83.9, "fat": 24.6, "visceral": 14, "muscle": 33.5, "bodyAge": 49, "bmr": 1835, "bmi": 28}, {"date": "2021-05-25", "weight": 82.4, "fat": 26.9, "visceral": 13, "muscle": 31.8, "bodyAge": 50, "bmr": 1790, "bmi": 27.5}, {"date": "2021-06-09", "weight": 81.4, "fat": 26.7, "visceral": 12, "muscle": 32, "bodyAge": 49, "bmr": 1776, "bmi": 27.2}, {"date": "2021-06-15", "weight": 81.9, "fat": 26.7, "visceral": 13, "muscle": 32, "bodyAge": 49, "bmr": 1784, "bmi": 27.4}, {"date": "2021-06-21", "weight": 81.5, "fat": 27, "visceral": 13, "muscle": 31.7, "bodyAge": 49, "bmr": 1775, "bmi": 27.2}, {"date": "2021-06-28", "weight": 81.6, "fat": 26.6, "visceral": 13, "muscle": 32.1, "bodyAge": 49, "bmr": 1780, "bmi": 27.3}, {"date": "2021-07-05", "weight": 82, "fat": 27.1, "visceral": 13, "muscle": 31.6, "bodyAge": 50, "bmr": 1782, "bmi": 27.4}, {"date": "2021-07-12", "weight": 81.4, "fat": 27, "visceral": 12, "muscle": 31.6, "bodyAge": 49, "bmr": 1772, "bmi": 27.2}, {"date": "2021-07-19", "weight": 82.5, "fat": 26.5, "visceral": 13, "muscle": 32.1, "bodyAge": 49, "bmr": 1796, "bmi": 27.6}, {"date": "2021-07-26", "weight": 81.8, "fat": 26.9, "visceral": 13, "muscle": 31.8, "bodyAge": 49, "bmr": 1781, "bmi": 27.3}, {"date": "2021-08-02", "weight": 81, "fat": 26.3, "visceral": 12, "muscle": 32.3, "bodyAge": 49, "bmr": 2773, "bmi": 27.1}, {"date": "2021-08-09", "weight": 81.2, "fat": 26.2, "visceral": 12, "muscle": 32.4, "bodyAge": 49, "bmr": 1777, "bmi": 27.1}, {"date": "2021-08-16", "weight": 81.1, "fat": 26.6, "visceral": 12, "muscle": 32, "bodyAge": 49, "bmr": 1772, "bmi": 27.1}, {"date": "2021-08-23", "weight": 80.6, "fat": 26.6, "visceral": 12, "muscle": 31.9, "bodyAge": 49, "bmr": 1763, "bmi": 26.9}, {"date": "2021-08-30", "weight": 81.4, "fat": 26.6, "visceral": 12, "muscle": 32.1, "bodyAge": 49, "bmr": 1777, "bmi": 27.2}, {"date": "2021-09-06", "weight": 81.8, "fat": 26.8, "visceral": 13, "muscle": 31.9, "bodyAge": 49, "bmr": 1782, "bmi": 27.3}, {"date": "2021-09-13", "weight": 81.9, "fat": 27.1, "visceral": 13, "muscle": 31.6, "bodyAge": 50, "bmr": 1780, "bmi": 27.4}, {"date": "2021-09-22", "weight": 82.5, "fat": 26.8, "visceral": 13, "muscle": 31.9, "bodyAge": 50, "bmr": 1793, "bmi": 27.6}, {"date": "2021-09-27", "weight": 82, "fat": 26.9, "visceral": 13, "muscle": 31.8, "bodyAge": 50, "bmr": 1784, "bmi": 27.4}, {"date": "2021-10-05", "weight": 82.2, "fat": 26.8, "visceral": 13, "muscle": 31.9, "bodyAge": 50, "bmr": 1788, "bmi": 27.5}, {"date": "2021-10-12", "weight": 83, "fat": 27.2, "visceral": 13, "muscle": 31.6, "bodyAge": 50, "bmr": 1798, "bmi": 27.7}, {"date": "2021-10-18", "weight": 82.7, "fat": 27.2, "visceral": 13, "muscle": 31.6, "bodyAge": 50, "bmr": 1793, "bmi": 27.6}, {"date": "2021-10-25", "weight": 82.8, "fat": 26.8, "visceral": 13, "muscle": 31.9, "bodyAge": 50, "bmr": 1798, "bmi": 27.7}, {"date": "2021-11-01", "weight": 83.4, "fat": 26.1, "visceral": 13, "muscle": 32.5, "bodyAge": 50, "bmr": 1814, "bmi": 27.9}, {"date": "2021-11-08", "weight": 83, "fat": 26.1, "visceral": 13, "muscle": 32.5, "bodyAge": 49, "bmr": 1807, "bmi": 27.7}, {"date": "2021-11-23", "weight": 83.3, "fat": 26.7, "visceral": 13, "muscle": 32, "bodyAge": 50, "bmr": 1807, "bmi": 27.8}, {"date": "2021-11-29", "weight": 83.6, "fat": 26.9, "visceral": 13, "muscle": 31.9, "bodyAge": 50, "bmr": 1810, "bmi": 27.9}, {"date": "2021-12-06", "weight": 83.1, "fat": 26.9, "visceral": 13, "muscle": 31.8, "bodyAge": 50, "bmr": 1802, "bmi": 27.8}, {"date": "2021-12-13", "weight": 83.1, "fat": 26.8, "visceral": 13, "muscle": 31.9, "bodyAge": 50, "bmr": 1803, "bmi": 27.8}, {"date": "2021-12-20", "weight": 83, "fat": 26.8, "visceral": 13, "muscle": 31.9, "bodyAge": 50, "bmr": 1801, "bmi": 27.7}, {"date": "2021-12-27", "weight": 83.1, "fat": 27.3, "visceral": 13, "muscle": 31.5, "bodyAge": 50, "bmr": 1798, "bmi": 27.8}, {"date": "2022-01-03", "weight": 83.4, "fat": 27, "visceral": 13, "muscle": 31.8, "bodyAge": 50, "bmr": 1806, "bmi": 27.9}, {"date": "2022-01-10", "weight": 82.6, "fat": 26.6, "visceral": 13, "muscle": 32.1, "bodyAge": 50, "bmr": 1796, "bmi": 27.6}, {"date": "2022-01-17", "weight": 83.8, "fat": 26.5, "visceral": 14, "muscle": 32.2, "bodyAge": 50, "bmr": 1817, "bmi": 28}, {"date": "2022-02-07", "weight": 83.8, "fat": 26.5, "visceral": 14, "muscle": 32.2, "bodyAge": 50, "bmr": 1817, "bmi": 28}, {"date": "2022-02-08", "weight": 83.4, "fat": 26.9, "visceral": 13, "muscle": 31.9, "bodyAge": 50, "bmr": 1807, "bmi": 27.9}, {"date": "2022-02-15", "weight": 83.1, "fat": 27, "visceral": 13, "muscle": 31.8, "bodyAge": 50, "bmr": 1802, "bmi": 27.8}, {"date": "2022-03-02", "weight": 83.9, "fat": 26.7, "visceral": 14, "muscle": 32, "bodyAge": 50, "bmr": 1817, "bmi": 28}, {"date": "2022-03-14", "weight": 85.6, "fat": 26.5, "visceral": 14, "muscle": 32.2, "bodyAge": 51, "bmr": 1846, "bmi": 28.6}, {"date": "2022-03-22", "weight": 84.7, "fat": 26.6, "visceral": 14, "muscle": 32, "bodyAge": 51, "bmr": 1830, "bmi": 28.3}, {"date": "2022-03-28", "weight": 84, "fat": 27.4, "visceral": 14, "muscle": 31.5, "bodyAge": 51, "bmr": 1812, "bmi": 28.1}, {"date": "2022-04-08", "weight": 83.4, "fat": 26.7, "visceral": 13, "muscle": 32, "bodyAge": 50, "bmr": 1809, "bmi": 27.9}, {"date": "2022-04-18", "weight": 85.1, "fat": 26.2, "visceral": 14, "muscle": 32.4, "bodyAge": 51, "bmr": 1840, "bmi": 28.4}, {"date": "2022-04-25", "weight": 83.9, "fat": 26.4, "visceral": 14, "muscle": 32.3, "bodyAge": 50, "bmr": 1820, "bmi": 28}, {"date": "2022-05-09", "weight": 83.4, "fat": 27.2, "visceral": 13, "muscle": 31.6, "bodyAge": 51, "bmr": 1804, "bmi": 27.9}, {"date": "2022-05-16", "weight": 83.5, "fat": 27.6, "visceral": 13, "muscle": 31.2, "bodyAge": 51, "bmr": 1802, "bmi": 27.9}, {"date": "2022-05-23", "weight": 84.2, "fat": 26.9, "visceral": 14, "muscle": 31.9, "bodyAge": 51, "bmr": 1820, "bmi": 28.1}, {"date": "2022-05-30", "weight": 84.1, "fat": 27.3, "visceral": 14, "muscle": 31.5, "bodyAge": 51, "bmr": 1814, "bmi": 28.1}, {"date": "2022-06-06", "weight": 84.9, "fat": 26.5, "visceral": 14, "muscle": 32.2, "bodyAge": 51, "bmr": 1834, "bmi": 28.4}, {"date": "2022-06-13", "weight": 84, "fat": 27.4, "visceral": 14, "muscle": 31.5, "bodyAge": 51, "bmr": 1812, "bmi": 28.1}, {"date": "2022-06-20", "weight": 83.9, "fat": 26.6, "visceral": 14, "muscle": 32.1, "bodyAge": 50, "bmr": 1817, "bmi": 28}, {"date": "2022-06-27", "weight": 83.5, "fat": 26.8, "visceral": 13, "muscle": 32, "bodyAge": 50, "bmr": 1810, "bmi": 27.9}, {"date": "2022-07-04", "weight": 84, "fat": 27.2, "visceral": 14, "muscle": 31.6, "bodyAge": 51, "bmr": 1814, "bmi": 28.1}, {"date": "2022-07-11", "weight": 84.7, "fat": 27.3, "visceral": 14, "muscle": 31.6, "bodyAge": 51, "bmr": 1824, "bmi": 28.3}, {"date": "2022-07-18", "weight": 84.7, "fat": 27.2, "visceral": 14, "muscle": 31.6, "bodyAge": 51, "bmr": 1825, "bmi": 28.3}, {"date": "2022-08-15", "weight": 84.2, "fat": 27.1, "visceral": 14, "muscle": 31.7, "bodyAge": 51, "bmr": 1818, "bmi": 28.1}, {"date": "2022-08-22", "weight": 84.3, "fat": 27.1, "visceral": 14, "muscle": 31.7, "bodyAge": 51, "bmr": 1819, "bmi": 28.2}, {"date": "2022-08-30", "weight": 83.5, "fat": 27.1, "visceral": 13, "muscle": 31.7, "bodyAge": 50, "bmr": 1807, "bmi": 27.9}, {"date": "2022-09-05", "weight": 83.1, "fat": 27.4, "visceral": 13, "muscle": 31.4, "bodyAge": 51, "bmr": 1797, "bmi": 27.8}, {"date": "2022-09-12", "weight": 84.1, "fat": 26.6, "visceral": 14, "muscle": 32.1, "bodyAge": 50, "bmr": 1821, "bmi": 28.1}, {"date": "2022-09-19", "weight": 84.4, "fat": 26.9, "visceral": 14, "muscle": 31.9, "bodyAge": 51, "bmr": 1823, "bmi": 28.2}, {"date": "2022-09-26", "weight": 83.4, "fat": 26.8, "visceral": 13, "muscle": 31.9, "bodyAge": 50, "bmr": 1808, "bmi": 27.9}, {"date": "2022-10-03", "weight": 83.5, "fat": 27, "visceral": 13, "muscle": 31.8, "bodyAge": 50, "bmr": 1808, "bmi": 27.9}, {"date": "2022-10-11", "weight": 82.9, "fat": 27, "visceral": 13, "muscle": 31.8, "bodyAge": 50, "bmr": 1798, "bmi": 27.7}, {"date": "2022-10-18", "weight": 83.7, "fat": 26.8, "visceral": 13, "muscle": 32, "bodyAge": 50, "bmr": 1813, "bmi": 28}, {"date": "2022-10-26", "weight": 83.2, "fat": 24.3, "visceral": 13, "muscle": 33.7, "bodyAge": 48, "bmr": 1825, "bmi": 27.8}, {"date": "2022-11-01", "weight": 83.2, "fat": 27, "visceral": 13, "muscle": 31.8, "bodyAge": 50, "bmr": 1803, "bmi": 27.8}, {"date": "2022-11-07", "weight": 80.7, "fat": 26.6, "visceral": 12, "muscle": 32, "bodyAge": 49, "bmr": 1765, "bmi": 27}, {"date": "2022-11-14", "weight": 82.3, "fat": 26.6, "visceral": 13, "muscle": 32.1, "bodyAge": 49, "bmr": 1792, "bmi": 27.5}, {"date": "2022-11-21", "weight": 81, "fat": 26, "visceral": 12, "muscle": 32.5, "bodyAge": 48, "bmr": 1776, "bmi": 27.1}, {"date": "2022-11-30", "weight": 83.1, "fat": 25.5, "visceral": 13, "muscle": 32.9, "bodyAge": 48, "bmr": 1814, "bmi": 27.8}, {"date": "2022-12-05", "weight": 81.9, "fat": 26.1, "visceral": 13, "muscle": 32.5, "bodyAge": 49, "bmr": 1790, "bmi": 27.4}, {"date": "2022-12-12", "weight": 81.4, "fat": 26, "visceral": 12, "muscle": 32.5, "bodyAge": 48, "bmr": 1782, "bmi": 27.2}, {"date": "2022-12-19", "weight": 80.6, "fat": 25.8, "visceral": 12, "muscle": 32.7, "bodyAge": 48, "bmr": 1771, "bmi": 26.9}, {"date": "2022-12-26", "weight": 81.3, "fat": 25.5, "visceral": 12, "muscle": 32.9, "bodyAge": 48, "bmr": 1785, "bmi": 27.2}, {"date": "2023-01-02", "weight": 81.2, "fat": 26.1, "visceral": 12, "muscle": 32.5, "bodyAge": 48, "bmr": 1778, "bmi": 27.1}, {"date": "2023-01-09", "weight": 81.4, "fat": 26.1, "visceral": 12, "muscle": 32.5, "bodyAge": 49, "bmr": 1782, "bmi": 27.2}, {"date": "2023-01-23", "weight": 81.2, "fat": 25.8, "visceral": 12, "muscle": 32.7, "bodyAge": 48, "bmr": 1781, "bmi": 27.1}, {"date": "2023-01-30", "weight": 82, "fat": 26.1, "visceral": 13, "muscle": 32.5, "bodyAge": 49, "bmr": 1792, "bmi": 27.4}, {"date": "2023-02-06", "weight": 81.6, "fat": 25.8, "visceral": 13, "muscle": 32.7, "bodyAge": 48, "bmr": 1788, "bmi": 27.3}, {"date": "2023-02-14", "weight": 82.4, "fat": 25.8, "visceral": 13, "muscle": 32.7, "bodyAge": 49, "bmr": 1800, "bmi": 27.5}, {"date": "2023-02-20", "weight": 82.2, "fat": 26.4, "visceral": 13, "muscle": 32.3, "bodyAge": 49, "bmr": 1792, "bmi": 27.5}, {"date": "2023-03-03", "weight": 83.3, "fat": 24.9, "visceral": 13, "muscle": 33.3, "bodyAge": 49, "bmr": 1823, "bmi": 27.8}, {"date": "2023-03-06", "weight": 85.1, "fat": 26.3, "visceral": 14, "muscle": 32.3, "bodyAge": 51, "bmr": 1840, "bmi": 28.4}, {"date": "2023-03-13", "weight": 83.8, "fat": 26.6, "visceral": 14, "muscle": 32.2, "bodyAge": 50, "bmr": 1817, "bmi": 28}, {"date": "2023-03-20", "weight": 84.9, "fat": 25.5, "visceral": 14, "muscle": 32.9, "bodyAge": 50, "bmr": 1843, "bmi": 28.4}, {"date": "2023-03-27", "weight": 83.8, "fat": 26.9, "visceral": 14, "muscle": 31.9, "bodyAge": 50, "bmr": 1813, "bmi": 28}, {"date": "2023-04-03", "weight": 84.9, "fat": 26.6, "visceral": 14, "muscle": 32.1, "bodyAge": 51, "bmr": 1843, "bmi": 28.4}, {"date": "2023-04-10", "weight": 82.9, "fat": 27, "visceral": 13, "muscle": 31.8, "bodyAge": 50, "bmr": 1798, "bmi": 27.7}, {"date": "2023-04-17", "weight": 83.7, "fat": 27.1, "visceral": 13, "muscle": 31.7, "bodyAge": 51, "bmr": 1810, "bmi": 28}, {"date": "2023-04-24", "weight": 83.8, "fat": 27.5, "visceral": 14, "muscle": 31.3, "bodyAge": 51, "bmr": 1807, "bmi": 28}, {"date": "2023-05-02", "weight": 83.2, "fat": 27, "visceral": 13, "muscle": 31.8, "bodyAge": 50, "bmr": 1803, "bmi": 27.8}, {"date": "2023-05-08", "weight": 83.8, "fat": 27, "visceral": 14, "muscle": 31.8, "bodyAge": 51, "bmr": 1912, "bmi": 28}, {"date": "2023-05-15", "weight": 84, "fat": 27, "visceral": 14, "muscle": 31.8, "bodyAge": 51, "bmr": 1816, "bmi": 28.1}, {"date": "2023-05-22", "weight": 83.5, "fat": 27, "visceral": 13, "muscle": 31.8, "bodyAge": 50, "bmr": 1808, "bmi": 27.9}, {"date": "2023-05-29", "weight": 84.1, "fat": 26.8, "visceral": 14, "muscle": 31.9, "bodyAge": 50, "bmr": 1819, "bmi": 28.1}, {"date": "2023-06-05", "weight": 83.8, "fat": 27.4, "visceral": 14, "muscle": 31.5, "bodyAge": 51, "bmr": 1809, "bmi": 28}, {"date": "2023-06-12", "weight": 83, "fat": 27.2, "visceral": 13, "muscle": 31.6, "bodyAge": 50, "bmr": 1797, "bmi": 27.7}, {"date": "2023-06-19", "weight": 85.2, "fat": 26.2, "visceral": 14, "muscle": 32.4, "bodyAge": 51, "bmr": 1842, "bmi": 28.5}, {"date": "2023-06-26", "weight": 84.6, "fat": 26.2, "visceral": 14, "muscle": 32.4, "bodyAge": 50, "bmr": 1832, "bmi": 28.3}, {"date": "2023-07-03", "weight": 83.2, "fat": 26.9, "visceral": 13, "muscle": 31.8, "bodyAge": 50, "bmr": 1803, "bmi": 27.8}, {"date": "2023-07-14", "weight": 83.6, "fat": 26.7, "visceral": 13, "muscle": 32, "bodyAge": 50, "bmr": 1812, "bmi": 27.9}, {"date": "2023-07-16", "weight": 83.5, "fat": 27, "visceral": 13, "muscle": 31.8, "bodyAge": 50, "bmr": 1808, "bmi": 27.9}, {"date": "2023-07-25", "weight": 84.8, "fat": 26.2, "visceral": 14, "muscle": 32.4, "bodyAge": 50, "bmr": 1836, "bmi": 28.3}, {"date": "2023-08-02", "weight": 83, "fat": 26.9, "visceral": 13, "muscle": 31.8, "bodyAge": 50, "bmr": 1800, "bmi": 27.7}, {"date": "2023-08-07", "weight": 83.7, "fat": 27.2, "visceral": 13, "muscle": 31.7, "bodyAge": 51, "bmr": 1809, "bmi": 28}, {"date": "2023-08-14", "weight": 84.1, "fat": 26.6, "visceral": 14, "muscle": 32.1, "bodyAge": 50, "bmr": 1820, "bmi": 28.1}, {"date": "2023-08-21", "weight": 82.7, "fat": 26.9, "visceral": 13, "muscle": 31.9, "bodyAge": 50, "bmr": 1795, "bmi": 27.6}, {"date": "2023-08-28", "weight": 82.6, "fat": 26.5, "visceral": 13, "muscle": 32.2, "bodyAge": 49, "bmr": 1798, "bmi": 27.6}, {"date": "2023-09-04", "weight": 81.7, "fat": 26.7, "visceral": 13, "muscle": 32, "bodyAge": 49, "bmr": 1781, "bmi": 27.3}, {"date": "2023-09-11", "weight": 83.1, "fat": 26.9, "visceral": 13, "muscle": 31.9, "bodyAge": 50, "bmr": 1802, "bmi": 27.8}, {"date": "2023-09-18", "weight": 82.8, "fat": 26.9, "visceral": 13, "muscle": 31.8, "bodyAge": 50, "bmr": 1797, "bmi": 27.7}, {"date": "2023-09-25", "weight": 82.3, "fat": 26.6, "visceral": 13, "muscle": 32.1, "bodyAge": 49, "bmr": 1792, "bmi": 27.5}, {"date": "2023-10-02", "weight": 82.8, "fat": 26.2, "visceral": 13, "muscle": 32.4, "bodyAge": 49, "bmr": 1804, "bmi": 27.7}, {"date": "2023-10-11", "weight": 83, "fat": 26, "visceral": 13, "muscle": 32.6, "bodyAge": 49, "bmr": 1809, "bmi": 27.7}, {"date": "2023-10-16", "weight": 83, "fat": 27.1, "visceral": 13, "muscle": 31.7, "bodyAge": 50, "bmr": 1799, "bmi": 27.7}, {"date": "2023-10-23", "weight": 83.1, "fat": 26.2, "visceral": 13, "muscle": 32.4, "bodyAge": 50, "bmr": 1808, "bmi": 27.8}, {"date": "2023-10-30", "weight": 85.1, "fat": 26, "visceral": 14, "muscle": 32.6, "bodyAge": 50, "bmr": 1843, "bmi": 28.4}, {"date": "2023-11-06", "weight": 85, "fat": 26.6, "visceral": 14, "muscle": 32.1, "bodyAge": 51, "bmr": 1836, "bmi": 28.4}, {"date": "2023-11-20", "weight": 83.9, "fat": 26.9, "visceral": 14, "muscle": 31.8, "bodyAge": 51, "bmr": 1815, "bmi": 28}, {"date": "2023-11-28", "weight": 85.4, "fat": 26.8, "visceral": 14, "muscle": 31.9, "bodyAge": 51, "bmr": 1839, "bmi": 28.5}, {"date": "2023-12-04", "weight": 84.4, "fat": 27, "visceral": 14, "muscle": 31.8, "bodyAge": 51, "bmr": 1822, "bmi": 28.2}, {"date": "2023-12-11", "weight": 85.1, "fat": 27.7, "visceral": 14, "muscle": 31.3, "bodyAge": 52, "bmr": 1827, "bmi": 28.4}, {"date": "2023-12-25", "weight": 84.8, "fat": 26.4, "visceral": 14, "muscle": 32.3, "bodyAge": 51, "bmr": 1834, "bmi": 28.3}, {"date": "2024-01-15", "weight": 84.4, "fat": 27, "visceral": 14, "muscle": 31.8, "bodyAge": 51, "bmr": 1822, "bmi": 28.2}, {"date": "2024-01-29", "weight": 85.9, "fat": 27.5, "visceral": 14, "muscle": 31.4, "bodyAge": 52, "bmr": 1841, "bmi": 28.7}, {"date": "2024-02-15", "weight": 86.3, "fat": 27.3, "visceral": 15, "muscle": 31.6, "bodyAge": 52, "bmr": 1851, "bmi": 28.8}, {"date": "2024-02-19", "weight": 86.4, "fat": 26.9, "visceral": 15, "muscle": 31.9, "bodyAge": 52, "bmr": 1854, "bmi": 28.8}, {"date": "2024-02-26", "weight": 86.3, "fat": 27.3, "visceral": 15, "muscle": 31.5, "bodyAge": 52, "bmr": 1851, "bmi": 28.9}, {"date": "2024-03-11", "weight": 86.1, "fat": 26.8, "visceral": 14, "muscle": 31.9, "bodyAge": 52, "bmr": 1851, "bmi": 28.8}, {"date": "2024-03-18", "weight": 86, "fat": 26.7, "visceral": 14, "muscle": 32, "bodyAge": 51, "bmr": 1851, "bmi": 28.7}, {"date": "2024-03-25", "weight": 85.2, "fat": 27.1, "visceral": 14, "muscle": 31.7, "bodyAge": 51, "bmr": 1834, "bmi": 28.5}, {"date": "2024-04-01", "weight": 87.1, "fat": 26.6, "visceral": 15, "muscle": 32, "bodyAge": 52, "bmr": 1869, "bmi": 29.1}, {"date": "2024-05-06", "weight": 84.4, "fat": 26.6, "visceral": 14, "muscle": 32.1, "bodyAge": 51, "bmr": 1826, "bmi": 28.2}, {"date": "2024-05-13", "weight": 84.6, "fat": 26.9, "visceral": 14, "muscle": 31.9, "bodyAge": 51, "bmr": 1826, "bmi": 28.3}, {"date": "2024-05-20", "weight": 84.5, "fat": 27.1, "visceral": 14, "muscle": 31.7, "bodyAge": 51, "bmr": 1823, "bmi": 28.2}, {"date": "2024-05-27", "weight": 83.6, "fat": 25.7, "visceral": 13, "muscle": 32.8, "bodyAge": 49, "bmr": 1821, "bmi": 27.9}, {"date": "2024-06-11", "weight": 82.3, "fat": 25.8, "visceral": 13, "muscle": 32.8, "bodyAge": 49, "bmr": 1799, "bmi": 27.5}, {"date": "2024-06-17", "weight": 83.2, "fat": 25.8, "visceral": 13, "muscle": 32.7, "bodyAge": 49, "bmr": 1813, "bmi": 27.8}, {"date": "2024-06-24", "weight": 82.3, "fat": 26.1, "visceral": 13, "muscle": 32.5, "bodyAge": 49, "bmr": 1796, "bmi": 27.5}, {"date": "2024-07-01", "weight": 82.3, "fat": 26.4, "visceral": 13, "muscle": 32.3, "bodyAge": 49, "bmr": 1794, "bmi": 27.5}, {"date": "2024-07-08", "weight": 82.5, "fat": 26.3, "visceral": 13, "muscle": 32.3, "bodyAge": 49, "bmr": 1798, "bmi": 27.6}, {"date": "2024-07-15", "weight": 82.8, "fat": 26.2, "visceral": 13, "muscle": 32.4, "bodyAge": 49, "bmr": 1804, "bmi": 27.7}, {"date": "2024-07-29", "weight": 82.7, "fat": 26.8, "visceral": 13, "muscle": 32, "bodyAge": 50, "bmr": 1797, "bmi": 27.6}, {"date": "2024-08-05", "weight": 83.3, "fat": 27, "visceral": 13, "muscle": 31.8, "bodyAge": 50, "bmr": 1805, "bmi": 27.8}, {"date": "2024-08-12", "weight": 83.9, "fat": 25.9, "visceral": 14, "muscle": 32.6, "bodyAge": 50, "bmr": 1824, "bmi": 28}, {"date": "2024-08-19", "weight": 83, "fat": 26.8, "visceral": 13, "muscle": 31.9, "bodyAge": 50, "bmr": 1801, "bmi": 27.7}, {"date": "2024-08-26", "weight": 83.9, "fat": 26.5, "visceral": 14, "muscle": 32.2, "bodyAge": 50, "bmr": 1818, "bmi": 28}, {"date": "2024-09-02", "weight": 83.7, "fat": 25.9, "visceral": 13, "muscle": 32.7, "bodyAge": 50, "bmr": 1821, "bmi": 28}, {"date": "2024-09-09", "weight": 83.5, "fat": 26.2, "visceral": 13, "muscle": 32.4, "bodyAge": 50, "bmr": 1815, "bmi": 27.9}, {"date": "2024-09-16", "weight": 83.1, "fat": 27.3, "visceral": 13, "muscle": 31.5, "bodyAge": 50, "bmr": 1798, "bmi": 27.8}, {"date": "2024-09-23", "weight": 83.9, "fat": 27.1, "visceral": 14, "muscle": 31.7, "bodyAge": 51, "bmr": 1813, "bmi": 28}, {"date": "2024-09-30", "weight": 83.6, "fat": 27, "visceral": 13, "muscle": 31.8, "bodyAge": 50, "bmr": 1809, "bmi": 27.9}, {"date": "2024-10-07", "weight": 83.8, "fat": 26.8, "visceral": 14, "muscle": 32, "bodyAge": 50, "bmr": 1815, "bmi": 28}, {"date": "2024-10-14", "weight": 84.6, "fat": 26.2, "visceral": 14, "muscle": 32.4, "bodyAge": 50, "bmr": 1833, "bmi": 28.3}, {"date": "2024-10-28", "weight": 84.9, "fat": 26.9, "visceral": 14, "muscle": 31.9, "bodyAge": 51, "bmr": 1831, "bmi": 28.4}, {"date": "2024-11-04", "weight": 85.1, "fat": 26.9, "visceral": 14, "muscle": 31.9, "bodyAge": 51, "bmr": 1834, "bmi": 28.4}, {"date": "2024-11-11", "weight": 85.2, "fat": 26.7, "visceral": 14, "muscle": 32, "bodyAge": 51, "bmr": 1838, "bmi": 28.5}, {"date": "2024-11-18", "weight": 83.9, "fat": 26.7, "visceral": 14, "muscle": 32.1, "bodyAge": 50, "bmr": 1817, "bmi": 28}, {"date": "2024-11-25", "weight": 81.9, "fat": 26.3, "visceral": 13, "muscle": 32.3, "bodyAge": 49, "bmr": 1788, "bmi": 27.4}, {"date": "2024-12-02", "weight": 83.4, "fat": 26.9, "visceral": 13, "muscle": 31.8, "bodyAge": 50, "bmr": 1806, "bmi": 27.9}, {"date": "2024-12-09", "weight": 83.1, "fat": 26.2, "visceral": 13, "muscle": 32.5, "bodyAge": 49, "bmr": 1809, "bmi": 27.8}, {"date": "2024-12-16", "weight": 83.2, "fat": 26, "visceral": 13, "muscle": 32.6, "bodyAge": 49, "bmr": 1812, "bmi": 27.8}, {"date": "2024-12-23", "weight": 83, "fat": 26.8, "visceral": 13, "muscle": 32, "bodyAge": 50, "bmr": 1802, "bmi": 27.7}, {"date": "2025-01-06", "weight": 85.3, "fat": 26.1, "visceral": 14, "muscle": 32.5, "bodyAge": 51, "bmr": 1845, "bmi": 28.5}, {"date": "2025-01-20", "weight": 84.5, "fat": 26.4, "visceral": 14, "muscle": 32.3, "bodyAge": 50, "bmr": 1830, "bmi": 28.2}, {"date": "2025-02-03", "weight": 84.7, "fat": 27, "visceral": 14, "muscle": 31.8, "bodyAge": 51, "bmr": 1827, "bmi": 28.3}, {"date": "2025-02-10", "weight": 84.5, "fat": 27, "visceral": 14, "muscle": 31.8, "bodyAge": 51, "bmr": 1824, "bmi": 28.2}, {"date": "2025-02-17", "weight": 84.5, "fat": 26.4, "visceral": 14, "muscle": 32.3, "bodyAge": 50, "bmr": 1829, "bmi": 28.2}, {"date": "2025-03-03", "weight": 85.5, "fat": 25.9, "visceral": 14, "muscle": 32.6, "bodyAge": 51, "bmr": 1849, "bmi": 28.6}, {"date": "2025-03-10", "weight": 84.6, "fat": 26.9, "visceral": 14, "muscle": 31.8, "bodyAge": 51, "bmr": 1826, "bmi": 28.3}, {"date": "2025-03-17", "weight": 84.6, "fat": 26.3, "visceral": 14, "muscle": 32.3, "bodyAge": 50, "bmr": 1831, "bmi": 28.3}, {"date": "2025-03-24", "weight": 84.7, "fat": 26.6, "visceral": 14, "muscle": 32.1, "bodyAge": 51, "bmr": 1830, "bmi": 28.3}, {"date": "2025-03-31", "weight": 84.9, "fat": 27.1, "visceral": 14, "muscle": 31.7, "bodyAge": 51, "bmr": 1829, "bmi": 28.4}, {"date": "2025-04-06", "weight": 85.3, "fat": 26.9, "visceral": 14, "muscle": 31.9, "bodyAge": 51, "bmr": 1837, "bmi": 28.5}, {"date": "2025-04-14", "weight": 84.4, "fat": 26.2, "visceral": 14, "muscle": 32.4, "bodyAge": 50, "bmr": 1830, "bmi": 28.2}, {"date": "2025-04-21", "weight": 83.8, "fat": 26.9, "visceral": 14, "muscle": 31.9, "bodyAge": 50, "bmr": 1813, "bmi": 28}, {"date": "2025-04-28", "weight": 84.8, "fat": 26.7, "visceral": 14, "muscle": 32.1, "bodyAge": 51, "bmr": 1831, "bmi": 28.3}, {"date": "2025-05-05", "weight": 84.2, "fat": 27, "visceral": 14, "muscle": 31.8, "bodyAge": 51, "bmr": 1819, "bmi": 28.1}, {"date": "2025-05-12", "weight": 84.5, "fat": 26.4, "visceral": 14, "muscle": 32.3, "bodyAge": 50, "bmr": 1830, "bmi": 28.2}, {"date": "2025-05-19", "weight": 85.2, "fat": 26.9, "visceral": 14, "muscle": 31.9, "bodyAge": 51, "bmr": 1836, "bmi": 28.5}, {"date": "2025-05-26", "weight": 85.1, "fat": 26.6, "visceral": 14, "muscle": 32.1, "bodyAge": 51, "bmr": 1837, "bmi": 28.4}, {"date": "2025-06-02", "weight": 84.5, "fat": 26.9, "visceral": 14, "muscle": 31.9, "bodyAge": 51, "bmr": 1825, "bmi": 28.2}, {"date": "2025-06-09", "weight": 84.7, "fat": 27.2, "visceral": 14, "muscle": 31.6, "bodyAge": 51, "bmr": 1825, "bmi": 28.3}, {"date": "2025-06-16", "weight": 84.5, "fat": 26.6, "visceral": 14, "muscle": 32.2, "bodyAge": 50, "bmr": 1828, "bmi": 28.2}, {"date": "2025-06-23", "weight": 85.2, "fat": 26.3, "visceral": 14, "muscle": 32.3, "bodyAge": 51, "bmr": 1841, "bmi": 28.5}, {"date": "2025-07-01", "weight": 85.2, "fat": 26.6, "visceral": 14, "muscle": 32.1, "bodyAge": 51, "bmr": 2839, "bmi": 28.5}, {"date": "2025-07-07", "weight": 85.7, "fat": 26.4, "visceral": 14, "muscle": 32.2, "bodyAge": 51, "bmr": 1848, "bmi": 28.6}, {"date": "2025-07-14", "weight": 84.8, "fat": 26.6, "visceral": 14, "muscle": 32.1, "bodyAge": 51, "bmr": 1832, "bmi": 28.3}, {"date": "2025-07-21", "weight": 84.5, "fat": 26.8, "visceral": 14, "muscle": 32, "bodyAge": 51, "bmr": 1826, "bmi": 28.2}, {"date": "2025-07-28", "weight": 84.4, "fat": 26.6, "visceral": 14, "muscle": 32.1, "bodyAge": 50, "bmr": 1826, "bmi": 28.2}, {"date": "2025-08-04", "weight": 84.9, "fat": 26.7, "visceral": 14, "muscle": 32.1, "bodyAge": 51, "bmr": 1833, "bmi": 28.4}, {"date": "2025-08-11", "weight": 84.4, "fat": 25.6, "visceral": 14, "muscle": 32.8, "bodyAge": 50, "bmr": 1834, "bmi": 28.2}, {"date": "2025-08-18", "weight": 84.7, "fat": 26.1, "visceral": 14, "muscle": 32.4, "bodyAge": 50, "bmr": 1834, "bmi": 28.3}, {"date": "2025-08-25", "weight": 84.6, "fat": 27, "visceral": 14, "muscle": 31.8, "bodyAge": 51, "bmr": 1825, "bmi": 28.3}, {"date": "2025-09-01", "weight": 84.3, "fat": 27.2, "visceral": 14, "muscle": 31.6, "bodyAge": 51, "bmr": 1818, "bmi": 28.2}, {"date": "2025-09-08", "weight": 84.4, "fat": 26.5, "visceral": 14, "muscle": 32.2, "bodyAge": 50, "bmr": 1827, "bmi": 28.2}, {"date": "2025-09-15", "weight": 83.8, "fat": 25.4, "visceral": 14, "muscle": 33, "bodyAge": 49, "bmr": 1827, "bmi": 28}, {"date": "2025-09-22", "weight": 83.5, "fat": 26.7, "visceral": 13, "muscle": 32, "bodyAge": 50, "bmr": 1810, "bmi": 27.9}, {"date": "2025-09-29", "weight": 83.8, "fat": 26.3, "visceral": 14, "muscle": 32.3, "bodyAge": 50, "bmr": 1819, "bmi": 28}, {"date": "2025-10-06", "weight": 83.4, "fat": 25.3, "visceral": 13, "muscle": 33.1, "bodyAge": 49, "bmr": 1821, "bmi": 27.9}, {"date": "2025-10-13", "weight": 84.1, "fat": 27.2, "visceral": 14, "muscle": 31.6, "bodyAge": 51, "bmr": 1815, "bmi": 28.1}, {"date": "2025-10-20", "weight": 84, "fat": 26.2, "visceral": 14, "muscle": 32.4, "bodyAge": 50, "bmr": 1823, "bmi": 28.1}, {"date": "2025-10-27", "weight": 85.1, "fat": 27, "visceral": 14, "muscle": 31.9, "bodyAge": 51, "bmr": 1834, "bmi": 28.4}, {"date": "2025-11-03", "weight": 84.2, "fat": 26.7, "visceral": 14, "muscle": 32.1, "bodyAge": 50, "bmr": 1822, "bmi": 28.1}, {"date": "2025-11-10", "weight": 84.2, "fat": 26.6, "visceral": 14, "muscle": 32.1, "bodyAge": 50, "bmr": 1822, "bmi": 28.1}, {"date": "2025-11-17", "weight": 84.1, "fat": 26.8, "visceral": 14, "muscle": 31.9, "bodyAge": 51, "bmr": 1819, "bmi": 28.1}, {"date": "2025-11-24", "weight": 83.9, "fat": 26.5, "visceral": 14, "muscle": 32.2, "bodyAge": 50, "bmr": 1819, "bmi": 28}, {"date": "2025-12-01", "weight": 83.8, "fat": 27.4, "visceral": 14, "muscle": 31.5, "bodyAge": 51, "bmr": 1809, "bmi": 28}, {"date": "2025-12-08", "weight": 84.9, "fat": 26.8, "visceral": 14, "muscle": 31.9, "bodyAge": 51, "bmr": 1832, "bmi": 28.4}, {"date": "2025-12-15", "weight": 84.7, "fat": 26.5, "visceral": 14, "muscle": 32.1, "bodyAge": 51, "bmr": 1831, "bmi": 28.3}, {"date": "2025-12-22", "weight": 83.8, "fat": 26.7, "visceral": 14, "muscle": 32.1, "bodyAge": 50, "bmr": 1816, "bmi": 28}, {"date": "2025-12-29", "weight": 84.6, "fat": 26.7, "visceral": 14, "muscle": 32, "bodyAge": 51, "bmr": 1828, "bmi": 28.3}, {"date": "2026-01-05", "weight": 83.5, "fat": 27.2, "visceral": 13, "muscle": 31.7, "bodyAge": 50, "bmr": 1806, "bmi": 27.9}, {"date": "2026-01-12", "weight": 84.4, "fat": 26.2, "visceral": 14, "muscle": 32.4, "bodyAge": 50, "bmr": 1829, "bmi": 28.2}, {"date": "2026-01-19", "weight": 83.5, "fat": 26, "visceral": 13, "muscle": 32.6, "bodyAge": 50, "bmr": 1817, "bmi": 27.9}, {"date": "2026-02-02", "weight": 84.2, "fat": 26.2, "visceral": 14, "muscle": 32.4, "bodyAge": 50, "bmr": 1826, "bmi": 28.1}, {"date": "2026-02-09", "weight": 85.1, "fat": 26.1, "visceral": 14, "muscle": 32.5, "bodyAge": 50, "bmr": 1841, "bmi": 28.4}, {"date": "2026-02-23", "weight": 84.9, "fat": 26, "visceral": 14, "muscle": 32.5, "bodyAge": 50, "bmr": 1839, "bmi": 28.4}, {"date": "2026-03-02", "weight": 84.9, "fat": 27.1, "visceral": 14, "muscle": 31.7, "bodyAge": 51, "bmr": 1829, "bmi": 28.4}, {"date": "2026-03-09", "weight": 85.1, "fat": 26.8, "visceral": 14, "muscle": 32, "bodyAge": 51, "bmr": 1835, "bmi": 28.4}, {"date": "2026-03-16", "weight": 85.4, "fat": 26.7, "visceral": 14, "muscle": 32, "bodyAge": 51, "bmr": 1841, "bmi": 28.5}, {"date": "2026-03-30", "weight": 85.1, "fat": 26.6, "visceral": 14, "muscle": 32.2, "bodyAge": 51, "bmr": 1838, "bmi": 28.4}, {"date": "2026-04-07", "weight": 84.5, "fat": 27.1, "visceral": 14, "muscle": 31.8, "bodyAge": 51, "bmr": 1823, "bmi": 28.2}, {"date": "2026-04-13", "weight": 84.7, "fat": 25.9, "visceral": 14, "muscle": 32.6, "bodyAge": 50, "bmr": 1837, "bmi": 28.3}, {"date": "2026-04-20", "weight": 83.3, "fat": 27.1, "visceral": 13, "muscle": 31.7, "bodyAge": 50, "bmr": 1803, "bmi": 27.8}, {"date": "2026-04-27", "weight": 83.8, "fat": 27.1, "visceral": 14, "muscle": 31.7, "bodyAge": 51, "bmr": 1812, "bmi": 28}, {"date": "2026-05-11", "weight": 84.6, "fat": 26.2, "visceral": 14, "muscle": 32.4, "bodyAge": 50, "bmr": 1833, "bmi": 28.3}, {"date": "2026-05-18", "weight": 84, "fat": 27, "visceral": 14, "muscle": 31.8, "bodyAge": 51, "bmr": 1816, "bmi": 28.1}, {"date": "2026-05-25", "weight": 84.7, "fat": 25.9, "visceral": 14, "muscle": 32.6, "bodyAge": 50, "bmr": 1836, "bmi": 28.3}, {"date": "2026-06-01", "weight": 84.7, "fat": 26.6, "visceral": 14, "muscle": 32.1, "bodyAge": 51, "bmr": 1830, "bmi": 28.3}, {"date": "2026-06-08", "weight": 84.4, "fat": 27, "visceral": 14, "muscle": 31.8, "bodyAge": 51, "bmr": 1822, "bmi": 28.2}, {"date": "2026-06-15", "weight": 84.4, "fat": 27.7, "visceral": 14, "muscle": 31.2, "bodyAge": 51, "bmr": 1815, "bmi": 28.2}];
+const ALLOWED_EMAIL = 'nasa.jetta@gmail.com';
+const CACHE_KEY = 'weightCloudCache_v1';
+Chart.defaults.font.family = getComputedStyle(document.body).fontFamily;
+Chart.defaults.font.size = 11; Chart.defaults.color = '#8a93a6';
+const fmt = d => { const [y,m,dd]=d.split('-'); return `${y}/${m}/${dd}`; };
+
+let RECORDS = [];   // 目前資料（雲端來源）
+let DATA = [];      // 排序後供渲染
+let synced = false;
+
+function loadCache(){ try{return JSON.parse(localStorage.getItem(CACHE_KEY))||null;}catch(e){return null;} }
+function saveCache(r){ try{localStorage.setItem(CACHE_KEY,JSON.stringify(r));}catch(e){} }
+function normalize(list){
+  const map=new Map();
+  (list||[]).forEach(r=>{ if(r&&r.date&&r.weight!=null) map.set(r.date,r); });
+  return [...map.values()].sort((a,b)=>a.date<b.date?-1:1);
+}
+function setRecords(list){ RECORDS=normalize(list); DATA=RECORDS; }
+
+// ---------- charts ----------
+let charts={};
+function destroyAll(){ Object.values(charts).forEach(c=>c&&c.destroy()); charts={}; }
+function movAvg(arr,key,n=5){return arr.map((_,i)=>{const s=arr.slice(Math.max(0,i-n+1),i+1).map(x=>x[key]).filter(v=>v!=null);return s.length?s.reduce((a,b)=>a+b,0)/s.length:null;});}
+function baseOpt(unit,beginZero=false){return{responsive:true,maintainAspectRatio:false,interaction:{mode:'index',intersect:false},plugins:{legend:{display:true,labels:{boxWidth:14,boxHeight:3,padding:12,font:{size:11}}},tooltip:{callbacks:{title:it=>fmt(it[0].label)}}},scales:{x:{type:'time',time:{unit:'year'},grid:{display:false},ticks:{maxRotation:0,autoSkip:true,maxTicksLimit:6}},y:{beginAtZero:beginZero,grid:{color:'#f0f2f8'},ticks:{callback:v=>v+(unit?' '+unit:'')}}}};}
+let curRange=0;
+function drawWeight(days){
+  curRange=days; if(!DATA.length) return;
+  let d=DATA;
+  if(days>0){const last=DATA[DATA.length-1];const cut=new Date(last.date);cut.setDate(cut.getDate()-days);const cs=cut.toISOString().slice(0,10);d=DATA.filter(x=>x.date>=cs);}
+  const labels=d.map(x=>x.date),w=d.map(x=>x.weight),ma=movAvg(d,'weight',5);
+  if(charts.w) charts.w.destroy();
+  charts.w=new Chart(document.getElementById('cWeight'),{type:'line',data:{labels,datasets:[
+    {label:'實測',data:w,borderColor:'#c9d2e6',backgroundColor:'rgba(201,210,230,.15)',borderWidth:1.5,pointRadius:0,tension:.3,fill:true},
+    {label:'移動平均',data:ma,borderColor:'#4f6ef7',borderWidth:2.6,pointRadius:0,tension:.4}]},options:baseOpt('kg')});
+}
+function drawRest(){
+  if(!DATA.length) return;
+  const L=DATA.map(x=>x.date);
+  charts.body=new Chart(document.getElementById('cBody'),{type:'line',data:{labels:L,datasets:[
+    {label:'體脂率 %',data:DATA.map(x=>x.fat),borderColor:'#f2506e',borderWidth:2,pointRadius:0,tension:.4,yAxisID:'y'},
+    {label:'骨格筋率 %',data:DATA.map(x=>x.muscle),borderColor:'#20c4a8',borderWidth:2,pointRadius:0,tension:.4,yAxisID:'y1'}]},options:{responsive:true,maintainAspectRatio:false,interaction:{mode:'index',intersect:false},plugins:{legend:{labels:{boxWidth:14,boxHeight:3,padding:12}},tooltip:{callbacks:{title:it=>fmt(it[0].label)}}},scales:{x:{type:'time',time:{unit:'year'},grid:{display:false},ticks:{maxRotation:0,autoSkip:true,maxTicksLimit:6}},y:{position:'left',grid:{color:'#f0f2f8'},ticks:{color:'#f2506e'}},y1:{position:'right',grid:{display:false},ticks:{color:'#20c4a8'}}}}});
+  charts.bmr=new Chart(document.getElementById('cBmr'),{type:'line',data:{labels:L,datasets:[
+    {label:'基礎代謝 kcal',data:DATA.map(x=>x.bmr),borderColor:'#7a5cf0',backgroundColor:'rgba(122,92,240,.12)',borderWidth:2,pointRadius:0,tension:.4,fill:true}]},options:baseOpt('')});
+  const bandPlugin={id:'band',beforeDraw(c){const{ctx,chartArea:a,scales}=c;if(!a)return;const y6=scales.y.getPixelForValue(6);ctx.save();ctx.fillStyle='rgba(32,196,168,.10)';ctx.fillRect(a.left,y6,a.right-a.left,a.bottom-y6);ctx.restore();}};
+  charts.health=new Chart(document.getElementById('cHealth'),{type:'line',data:{labels:L,datasets:[
+    {label:'內臟脂肪',data:DATA.map(x=>x.visceral),borderColor:'#f7883b',borderWidth:2,pointRadius:0,tension:.4,yAxisID:'y'},
+    {label:'體年齡',data:DATA.map(x=>x.bodyAge),borderColor:'#4f6ef7',borderWidth:2,pointRadius:0,tension:.4,yAxisID:'y1'}]},options:{responsive:true,maintainAspectRatio:false,interaction:{mode:'index',intersect:false},plugins:{legend:{labels:{boxWidth:14,boxHeight:3,padding:12}},tooltip:{callbacks:{title:it=>fmt(it[0].label)}}},scales:{x:{type:'time',time:{unit:'year'},grid:{display:false},ticks:{maxRotation:0,autoSkip:true,maxTicksLimit:6}},y:{position:'left',grid:{color:'#f0f2f8'},title:{display:true,text:'內臟脂肪'}},y1:{position:'right',grid:{display:false},title:{display:true,text:'體年齡'}}}},plugins:[bandPlugin]});
+}
+function renderHeader(){
+  if(!DATA.length) return;
+  const last=DATA[DATA.length-1],prev=DATA[DATA.length-2]||last;
+  document.getElementById('curW').textContent=last.weight.toFixed(1);
+  document.getElementById('curDate').textContent='最新量測 '+fmt(last.date);
+  const dW=last.weight-prev.weight;
+  document.getElementById('curDelta').textContent=(dW>=0?'▲ ':'▼ ')+Math.abs(dW).toFixed(1)+' kg';
+  document.getElementById('mFat').textContent=last.fat??'--';
+  document.getElementById('mMus').textContent=last.muscle??'--';
+  document.getElementById('mBmi').textContent=last.bmi??'--';
+  document.getElementById('mAge').textContent=last.bodyAge??'--';
+  const start=DATA[0];
+  document.getElementById('startW').innerHTML=start.weight.toFixed(1)+'<small> kg</small>';
+  const totDrop=start.weight-last.weight;
+  document.getElementById('totalDrop').textContent=(totDrop>=0?'累計減 ':'累計增 ')+Math.abs(totDrop).toFixed(1)+' kg';
+  const minPt=DATA.reduce((a,b)=>b.weight<a.weight?b:a);
+  document.getElementById('minW').innerHTML=minPt.weight.toFixed(1)+'<small> kg</small>';
+  document.getElementById('minWDate').textContent=fmt(minPt.date);
+  const visB=document.getElementById('hVisB');document.getElementById('hVis').textContent=last.visceral??'--';
+  if(last.visceral!=null){if(last.visceral<6){visB.className='badge b-good';visB.textContent='標準範圍';}else if(last.visceral<10){visB.className='badge b-warn';visB.textContent='略高';}else{visB.className='badge b-bad';visB.textContent='偏高';}}else visB.textContent='';
+  const hbB=document.getElementById('hBmiB');document.getElementById('hBmi').textContent=last.bmi??'--';
+  if(last.bmi!=null){if(last.bmi<24){hbB.className='badge b-good';hbB.textContent='標準';}else if(last.bmi<27){hbB.className='badge b-warn';hbB.textContent='過重';}else{hbB.className='badge b-bad';hbB.textContent='肥胖';}}else hbB.textContent='';
+}
+function renderRecords(){
+  const rb=document.getElementById('recBody');rb.innerHTML='';
+  const rev=[...DATA].reverse();
+  rev.forEach((x,i)=>{
+    const nxt=rev[i+1];let cls='',arrow='';
+    if(nxt){const d=x.weight-nxt.weight;if(d>0){cls='up';arrow='▲';}else if(d<0){cls='down';arrow='▼';}}
+    const row=document.createElement('div');row.className='rec-row';
+    row.innerHTML=`<span class="d">${fmt(x.date)}</span><span class="w ${cls}">${x.weight.toFixed(1)} <small>${arrow}</small></span><span>${x.fat??'-'}</span><span>${x.bmi??'-'}</span><button class="del" data-del="${x.date}">✕</button>`;
+    rb.appendChild(row);
+  });
+  rb.querySelectorAll('[data-del]').forEach(b=>b.addEventListener('click',()=>{
+    if(!confirm('刪除 '+fmt(b.dataset.del)+' 這筆紀錄？')) return;
+    commit(RECORDS.filter(r=>r.date!==b.dataset.del));
+  }));
+}
+function renderAll(){
+  destroyAll();
+  document.getElementById('curW').textContent=DATA.length?'':'--';
+  renderHeader(); drawWeight(curRange); drawRest(); renderRecords();
+  document.getElementById('syncChip').style.visibility='visible';
+}
+// 寫入：更新本地 + 雲端
+function commit(list){
+  setRecords(list); saveCache(RECORDS); renderAll();
+  if(window._fbSave){ window._fbSave(RECORDS).then(()=>setSync('ok')).catch(()=>setSync('off')); }
+}
+function setSync(state){
+  const dot=document.getElementById('syncDot'),txt=document.getElementById('syncTxt');
+  dot.className='dot'+(state==='ok'?'':state==='off'?' off':' err');
+  txt.textContent=state==='ok'?'已同步':state==='off'?'離線（暫存本機）':'連線中…';
+  synced=(state==='ok');
+}
+
+// ---------- nav / range / sheet / export（UI） ----------
+document.querySelectorAll('#nav button').forEach(b=>b.addEventListener('click',()=>{
+  document.querySelectorAll('#nav button').forEach(x=>x.classList.remove('on'));b.classList.add('on');
+  document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
+  document.getElementById('v-'+b.dataset.v).classList.add('active');document.querySelector('main').scrollTop=0;
+}));
+document.querySelectorAll('#rangeSeg button').forEach(b=>b.addEventListener('click',()=>{
+  document.querySelectorAll('#rangeSeg button').forEach(x=>x.classList.remove('on'));b.classList.add('on');drawWeight(+b.dataset.r);
+}));
+const overlay=document.getElementById('overlay');
+function openSheet(){const t=new Date();document.getElementById('fDate').value=t.toISOString().slice(0,10);['fWeight','fFat','fVis','fMus','fAge','fBmr','fBmi'].forEach(id=>document.getElementById(id).value='');overlay.classList.add('show');}
+function closeSheet(){overlay.classList.remove('show');}
+document.getElementById('fab').addEventListener('click',openSheet);
+document.getElementById('cancelBtn').addEventListener('click',closeSheet);
+overlay.addEventListener('click',e=>{if(e.target===overlay)closeSheet();});
+document.getElementById('saveBtn').addEventListener('click',()=>{
+  const date=document.getElementById('fDate').value;const wv=parseFloat(document.getElementById('fWeight').value);
+  if(!date){alert('請選日期');return;} if(isNaN(wv)){alert('請輸入體重');return;}
+  const num=id=>{const v=parseFloat(document.getElementById(id).value);return isNaN(v)?null:v;};
+  const rec={date,weight:wv,fat:num('fFat'),visceral:num('fVis'),muscle:num('fMus'),bodyAge:num('fAge'),bmr:num('fBmr'),bmi:num('fBmi')};
+  commit(RECORDS.filter(r=>r.date!==date).concat([rec]));
+  closeSheet();document.querySelector('#nav button[data-v="trend"]').click();
+});
+function download(name,text,type){const b=new Blob([text],{type});const u=URL.createObjectURL(b);const a=document.createElement('a');a.href=u;a.download=name;a.click();URL.revokeObjectURL(u);}
+document.getElementById('expJson').addEventListener('click',()=>download('體重紀錄.json',JSON.stringify(DATA,null,2),'application/json'));
+document.getElementById('expCsv').addEventListener('click',()=>{
+  const cols=['date','weight','fat','visceral','muscle','bodyAge','bmr','bmi'];
+  const head='日期,體重,體脂率,內臟脂肪,骨格筋率,體年齡,基礎代謝,BMI';
+  const lines=DATA.map(r=>cols.map(c=>r[c]??'').join(','));
+  download('體重紀錄.csv','﻿'+head+'\n'+lines.join('\n'),'text/csv;charset=utf-8');
+});
+document.getElementById('logoutBtn').addEventListener('click',()=>{ if(window._authSignOut) window._authSignOut(); });
+
+// ---------- 登入 + 同步啟動 ----------
+const loginEl=document.getElementById('login');
+function showLogin(msg){ loginEl.classList.add('show'); document.getElementById('loginMsg').textContent=msg||''; }
+function hideLogin(){ loginEl.classList.remove('show'); }
+document.getElementById('googleBtn').addEventListener('click',()=>{
+  document.getElementById('loginMsg').textContent='登入中…';
+  if(window._authSignIn) window._authSignIn().catch(e=>{document.getElementById('loginMsg').textContent='登入失敗：'+(e.code||e.message);});
+});
+let listenStarted=false;
+function startListen(){
+  if(listenStarted||!window._fbListen) return; listenStarted=true;
+  window._fbListen((data,err)=>{
+    if(err){ setSync('off'); return; }
+    if(data===null){ // 雲端還沒資料 → 用內建 317 筆種子初始化
+      setRecords(BASE_DATA); saveCache(RECORDS); renderAll();
+      if(window._fbSave) window._fbSave(RECORDS).then(()=>setSync('ok')).catch(()=>setSync('off'));
+      return;
+    }
+    setRecords(data.records||[]); saveCache(RECORDS); renderAll(); setSync('ok');
+  });
+}
+function bootAuth(){
+  if(!window._onAuth){ setTimeout(bootAuth,120); return; }
+  window._onAuth((user)=>{
+    if(!user){ showLogin(); return; }
+    if(user.email!==ALLOWED_EMAIL){ showLogin('此帳號（'+user.email+'）無權限'); if(window._authSignOut) window._authSignOut(); return; }
+    hideLogin(); startListen();
+  });
+}
+// 先用本機快取即時渲染（登入前先看到東西）
+(function initPaint(){
+  const c=loadCache();
+  if(c&&c.length){ setRecords(c); renderAll(); }
+  else { setRecords(BASE_DATA); renderAll(); } // 首次用內建種子墊著
+})();
+window.addEventListener('fbready',bootAuth);
+if(window._onAuth) bootAuth();
+</script>
+</body>
+</html>
