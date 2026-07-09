@@ -7,7 +7,6 @@
 <meta name="theme-color" content="#4f6ef7">
 <title>體重紀錄</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/chartjs-adapter-date-fns/3.0.0/chartjs-adapter-date-fns.bundle.min.js"></script>
 <style>
   :root{--bg:#eef1f6;--card:#ffffff;--ink:#1c2333;--sub:#8a93a6;--accent:#4f6ef7;--accent2:#20c4a8;--warn:#f7883b;--danger:#f2506e;--line:#eceff5;--shadow:0 6px 22px rgba(30,40,80,.08);}
   *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
@@ -225,7 +224,7 @@ function setRecords(list){ RECORDS=normalize(list); DATA=RECORDS; }
 let charts={};
 function destroyAll(){ Object.values(charts).forEach(c=>c&&c.destroy()); charts={}; }
 function movAvg(arr,key,n=5){return arr.map((_,i)=>{const s=arr.slice(Math.max(0,i-n+1),i+1).map(x=>x[key]).filter(v=>v!=null);return s.length?s.reduce((a,b)=>a+b,0)/s.length:null;});}
-function baseOpt(unit,beginZero=false){return{responsive:true,maintainAspectRatio:false,interaction:{mode:'index',intersect:false},plugins:{legend:{display:true,labels:{boxWidth:14,boxHeight:3,padding:12,font:{size:11}}},tooltip:{callbacks:{title:it=>fmt(it[0].label)}}},scales:{x:{type:'time',time:{unit:'year'},grid:{display:false},ticks:{maxRotation:0,autoSkip:true,maxTicksLimit:6}},y:{beginAtZero:beginZero,grid:{color:'#f0f2f8'},ticks:{callback:v=>v+(unit?' '+unit:'')}}}};}
+function baseOpt(unit,beginZero=false){return{responsive:true,maintainAspectRatio:false,interaction:{mode:'index',intersect:false},plugins:{legend:{display:true,labels:{boxWidth:14,boxHeight:3,padding:12,font:{size:11}}},tooltip:{callbacks:{title:it=>fmt(it[0].label)}}},scales:{x:{type:'category',grid:{display:false},ticks:{maxRotation:0,autoSkip:true,maxTicksLimit:7,callback:function(v){var l=this.getLabelForValue(v);return (typeof l==='string')?l.slice(0,4):l;}}},y:{beginAtZero:beginZero,grid:{color:'#f0f2f8'},ticks:{callback:v=>v+(unit?' '+unit:'')}}}};}
 let curRange=0;
 function drawWeight(days){
   curRange=days; if(!DATA.length) return;
@@ -242,13 +241,13 @@ function drawRest(){
   const L=DATA.map(x=>x.date);
   charts.body=new Chart(document.getElementById('cBody'),{type:'line',data:{labels:L,datasets:[
     {label:'體脂率 %',data:DATA.map(x=>x.fat),borderColor:'#f2506e',borderWidth:2,pointRadius:0,tension:.4,yAxisID:'y'},
-    {label:'骨格筋率 %',data:DATA.map(x=>x.muscle),borderColor:'#20c4a8',borderWidth:2,pointRadius:0,tension:.4,yAxisID:'y1'}]},options:{responsive:true,maintainAspectRatio:false,interaction:{mode:'index',intersect:false},plugins:{legend:{labels:{boxWidth:14,boxHeight:3,padding:12}},tooltip:{callbacks:{title:it=>fmt(it[0].label)}}},scales:{x:{type:'time',time:{unit:'year'},grid:{display:false},ticks:{maxRotation:0,autoSkip:true,maxTicksLimit:6}},y:{position:'left',grid:{color:'#f0f2f8'},ticks:{color:'#f2506e'}},y1:{position:'right',grid:{display:false},ticks:{color:'#20c4a8'}}}}});
+    {label:'骨格筋率 %',data:DATA.map(x=>x.muscle),borderColor:'#20c4a8',borderWidth:2,pointRadius:0,tension:.4,yAxisID:'y1'}]},options:{responsive:true,maintainAspectRatio:false,interaction:{mode:'index',intersect:false},plugins:{legend:{labels:{boxWidth:14,boxHeight:3,padding:12}},tooltip:{callbacks:{title:it=>fmt(it[0].label)}}},scales:{x:{type:'category',grid:{display:false},ticks:{maxRotation:0,autoSkip:true,maxTicksLimit:7,callback:function(v){var l=this.getLabelForValue(v);return (typeof l==='string')?l.slice(0,4):l;}}},y:{position:'left',grid:{color:'#f0f2f8'},ticks:{color:'#f2506e'}},y1:{position:'right',grid:{display:false},ticks:{color:'#20c4a8'}}}}});
   charts.bmr=new Chart(document.getElementById('cBmr'),{type:'line',data:{labels:L,datasets:[
     {label:'基礎代謝 kcal',data:DATA.map(x=>x.bmr),borderColor:'#7a5cf0',backgroundColor:'rgba(122,92,240,.12)',borderWidth:2,pointRadius:0,tension:.4,fill:true}]},options:baseOpt('')});
   const bandPlugin={id:'band',beforeDraw(c){const{ctx,chartArea:a,scales}=c;if(!a)return;const y6=scales.y.getPixelForValue(6);ctx.save();ctx.fillStyle='rgba(32,196,168,.10)';ctx.fillRect(a.left,y6,a.right-a.left,a.bottom-y6);ctx.restore();}};
   charts.health=new Chart(document.getElementById('cHealth'),{type:'line',data:{labels:L,datasets:[
     {label:'內臟脂肪',data:DATA.map(x=>x.visceral),borderColor:'#f7883b',borderWidth:2,pointRadius:0,tension:.4,yAxisID:'y'},
-    {label:'體年齡',data:DATA.map(x=>x.bodyAge),borderColor:'#4f6ef7',borderWidth:2,pointRadius:0,tension:.4,yAxisID:'y1'}]},options:{responsive:true,maintainAspectRatio:false,interaction:{mode:'index',intersect:false},plugins:{legend:{labels:{boxWidth:14,boxHeight:3,padding:12}},tooltip:{callbacks:{title:it=>fmt(it[0].label)}}},scales:{x:{type:'time',time:{unit:'year'},grid:{display:false},ticks:{maxRotation:0,autoSkip:true,maxTicksLimit:6}},y:{position:'left',grid:{color:'#f0f2f8'},title:{display:true,text:'內臟脂肪'}},y1:{position:'right',grid:{display:false},title:{display:true,text:'體年齡'}}}},plugins:[bandPlugin]});
+    {label:'體年齡',data:DATA.map(x=>x.bodyAge),borderColor:'#4f6ef7',borderWidth:2,pointRadius:0,tension:.4,yAxisID:'y1'}]},options:{responsive:true,maintainAspectRatio:false,interaction:{mode:'index',intersect:false},plugins:{legend:{labels:{boxWidth:14,boxHeight:3,padding:12}},tooltip:{callbacks:{title:it=>fmt(it[0].label)}}},scales:{x:{type:'category',grid:{display:false},ticks:{maxRotation:0,autoSkip:true,maxTicksLimit:7,callback:function(v){var l=this.getLabelForValue(v);return (typeof l==='string')?l.slice(0,4):l;}}},y:{position:'left',grid:{color:'#f0f2f8'},title:{display:true,text:'內臟脂肪'}},y1:{position:'right',grid:{display:false},title:{display:true,text:'體年齡'}}}},plugins:[bandPlugin]});
 }
 function renderHeader(){
   if(!DATA.length) return;
@@ -291,7 +290,7 @@ function renderRecords(){
 function renderAll(){
   destroyAll();
   document.getElementById('curW').textContent=DATA.length?'':'--';
-  renderHeader(); drawWeight(curRange); drawRest(); renderRecords();
+  renderHeader(); try{drawWeight(curRange); drawRest();}catch(e){console.warn('chart error',e);} renderRecords();
   document.getElementById('syncChip').style.visibility='visible';
 }
 // 寫入：更新本地 + 雲端
@@ -368,14 +367,17 @@ function bootAuth(){
     hideLogin(); startListen();
   });
 }
-// 先用本機快取即時渲染（登入前先看到東西）
-(function initPaint(){
-  const c=loadCache();
-  if(c&&c.length){ setRecords(c); renderAll(); }
-  else { setRecords(BASE_DATA); renderAll(); } // 首次用內建種子墊著
-})();
+// 先掛上 auth 啟動（獨立於渲染，避免圖表錯誤擋住登入）
 window.addEventListener('fbready',bootAuth);
 if(window._onAuth) bootAuth();
+// 再用本機快取即時渲染（登入前先看到東西）
+(function initPaint(){
+  try{
+    const c=loadCache();
+    if(c&&c.length){ setRecords(c); renderAll(); }
+    else { setRecords(BASE_DATA); renderAll(); }
+  }catch(e){ console.warn('initPaint error',e); }
+})();
 </script>
 </body>
 </html>
